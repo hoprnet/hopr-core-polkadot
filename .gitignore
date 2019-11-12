@@ -1,0 +1,8 @@
+# Exclude compiled typescript
+lib/
+
+# Exclude node.js stuff
+node_modules/
+
+# Exclude IDE stuff
+.vscode/

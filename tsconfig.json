@@ -4,10 +4,10 @@
         "module": "commonjs",
         "esModuleInterop": true,
         "outDir": "./lib",
-        //"noImplicitAny": true,
+        "noImplicitAny": true,
         "moduleResolution": "node",
         "target": "es2019",
-        //"strict": true
+        "strict": true
     },
     "include": [
         "./src/"

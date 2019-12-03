@@ -1,15 +1,12 @@
-  
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "esModuleInterop": true,
-        "outDir": "./lib",
-        "noImplicitAny": true,
-        "moduleResolution": "node",
-        "target": "es2019",
-        "strict": true
-    },
-    "include": [
-        "./src/"
-    ]
+  "compilerOptions": {
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "outDir": "./lib",
+    "noImplicitAny": true,
+    "moduleResolution": "node",
+    "target": "es2019",
+    "strict": true
+  },
+  "include": ["./src/"]
 }

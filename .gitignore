@@ -8,4 +8,5 @@ node_modules/
 .vscode/
 
 # Exclude yarn stuff
-**/yarn-error.log
+.packages-cache/
+yarn-error.log

@@ -9,6 +9,10 @@
   dependencies:
     regenerator-runtime "^0.13.2"
 
+"@hoprnet/hopr-polkadot@hoprnet/hopr-polkadot":
+  version "0.0.0"
+  resolved "https://codeload.github.com/hoprnet/hopr-polkadot/tar.gz/c38e232fc18122a690d36ee420884b9aa07376dc"
+
 "@polkadot/api-derive@^0.96.1":
   version "0.96.1"
   resolved "https://registry.yarnpkg.com/@polkadot/api-derive/-/api-derive-0.96.1.tgz#dc49db7293b585c4bde5e334c134127821a0ebed"

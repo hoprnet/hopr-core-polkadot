@@ -17,6 +17,7 @@
   "devDependencies": {
     "@types/levelup": "^3.1.1",
     "@types/node": "^12.12.8",
+    "@hoprnet/hopr-polkadot": "hoprnet/hopr-polkadot",
     "ts-node": "^8.5.2",
     "typescript": "^3.7.2"
   },

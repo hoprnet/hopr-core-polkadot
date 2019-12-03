@@ -16,8 +16,10 @@ import { isPartyA, getId } from './utils'
 import { LevelUp } from 'levelup'
 import { ApiPromise } from '@polkadot/api'
 import { Nonce, Channel as ChannelKey } from './db_keys'
-import { Opened, EventSignalling, EventHandler } from './events'
+import { Opened, PushedBackSettlement, EventSignalling, EventHandler } from './events'
+import { u64 } from '@polkadot/types'
 import { CodecArg } from '@polkadot/types/types'
+import { Event } from '@polkadot/types/interfaces'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
@@ -30,6 +32,7 @@ export type ChannelProps = {
 
 export class Channel {
   private _channel?: ChannelEnum
+  private _settlementWindow?: u64
 
   channelId: Hash
 
@@ -39,7 +42,7 @@ export class Channel {
 
   private get channel(): Promise<ChannelEnum> {
     return new Promise<ChannelEnum>(async (resolve, reject) => {
-      if (this._channel) {
+      if (this._channel != null) {
         return resolve(this._channel)
       }
       try {
@@ -48,6 +51,20 @@ export class Channel {
         return reject(err)
       }
       return resolve(this._channel)
+    })
+  }
+
+  get settlementWindow(): Promise<u64> {
+    return new Promise<u64>(async (resolve, reject) => {
+      if (this._settlementWindow != null) {
+        return resolve(this._settlementWindow)
+      }
+      try {
+        this._settlementWindow = (await this.props.api.consts.hopr.pendingWindow) as u64
+      } catch (err) {
+        return reject(err)
+      }
+      return resolve(this._settlementWindow)
     })
   }
 
@@ -143,7 +160,33 @@ export class Channel {
     return sr25519Verify(signedTicket.signature, signedTicket.lotteryTicket.toU8a(), this.props.counterparty.toU8a())
   }
 
-  async testAndSetNonce(signature: Uint8Array): Promise<void> {
+  async submitTicket(signedTicket: SignedLotteryTicket) {}
+
+  static async open(props: ChannelProps, amount: Balance, eventRegistry: EventSignalling): Promise<ChannelOpener> {
+    let channelId = getId(props.self, props.counterparty)
+
+    await props.db.get(ChannelKey(channelId)).then(_ => {
+      throw Error('Channel must not exit.')
+    })
+
+    return new ChannelOpener({
+      ...props,
+      eventRegistry,
+      channelId,
+      amount
+    }).increaseFunds(amount)
+  }
+
+  initiateSettlement(eventRegistry: EventSignalling): Promise<ChannelCloser> {
+    return new ChannelCloser({
+      ...this.props,
+      channelId: this.channelId,
+      pendingWindow: this.settlementWindow,
+      eventRegistry
+    }).initiateSettlement()
+  }
+
+  private async testAndSetNonce(signature: Uint8Array): Promise<void> {
     const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
 
     const key = Nonce(this.channelId, new Hash(nonce))
@@ -152,28 +195,6 @@ export class Channel {
       throw Error('Nonces must not be used twice.')
     })
   }
-
-  static async open(props: ChannelProps, amount: Balance, eventRegistry: EventSignalling): Promise<ChannelOpener> {
-    let channelId = getId(props.self, props.counterparty)
-
-    await Promise.all([
-      props.db.get(ChannelKey(channelId)).then(_ => {
-        throw Error('Channel must not exit.')
-      }),
-      Reflect.apply(checkFreeBalance, this, [])
-    ])
-
-    // @ts-ignore
-    await api.tx.hopr.create(amount, counterparty).signAndSend(self)
-
-    return new ChannelOpener({
-      ...props,
-      eventRegistry,
-      channelId,
-      amount
-    })
-  }
-  async initiateSettlement(): Promise<void> {}
 }
 
 type ChannelOpenerProps = ChannelProps & {
@@ -183,6 +204,8 @@ type ChannelOpenerProps = ChannelProps & {
 }
 
 class ChannelOpener {
+  initialised: boolean = false
+
   constructor(private props: ChannelOpenerProps) {}
 
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
@@ -197,16 +220,46 @@ class ChannelOpener {
     // @ts-ignore
     await this.props.api.tx.hopr.create(newAmount, this.props.counterparty).signAndSend(this.props.self)
 
+    this.initialised = true
+
     return this
   }
 
-  onceFundedByCounterparty(handler: EventHandler): ChannelOpener {
-    this.props.eventRegistry.on(Opened(this.props.channelId), handler)
+  onceOpen(handler?: EventHandler): void | Promise<ChannelOpener> {
+    Reflect.apply(checkInitialised, this, [])
 
-    return this
+    const eventIdentifier = Opened(this.props.channelId)
+
+    if (isEventHandler(handler)) {
+      this.props.eventRegistry.once(eventIdentifier, handler)
+    }
+
+    return new Promise<ChannelOpener>(resolve => {
+      this.props.eventRegistry.once(eventIdentifier, () => resolve(this))
+    })
+  }
+
+  // @TODO
+  async onceFundedByCounterparty(handler?: EventHandler): Promise<void | ChannelOpener> {
+    Reflect.apply(checkInitialised, this, [])
+
+    if (isEventHandler(handler)) {
+      const unsubscribe = await this.props.api.query.hopr.channels(this.props.channelId, channel => {
+        unsubscribe()
+      })
+    }
+
+    return new Promise<ChannelOpener>(async resolve => {
+      const unsubscribe = await this.props.api.query.hopr.channels(this.props.channelId, channel => {
+        unsubscribe()
+        resolve(this)
+      })
+    })
   }
 
   async setActive(this: ChannelOpener & ChannelOpenerProps, signature: Signature): Promise<Channel> {
+    Reflect.apply(checkInitialised, this, [])
+
     await Promise.all([
       this.api.tx.hopr.setActive(this.counterparty, signature).signAndSend(this.self),
       this.db.put(ChannelKey(this.channelId), '')
@@ -221,8 +274,94 @@ class ChannelOpener {
   }
 }
 
+type ChannelCloserProps = Pick<ChannelProps, 'api' | 'counterparty' | 'self'> & {
+  pendingWindow: Promise<u64>
+  eventRegistry: EventSignalling
+  channelId: Hash
+}
+
 class ChannelCloser {
-    // @TODO
+  private _end?: u64
+
+  initialised: boolean = false
+
+  timer?: any
+
+  get end(): Promise<u64> {
+    return new Promise<u64>(async (resolve, reject) => {
+      if (this._end != null) {
+        return resolve(this._end)
+      } else {
+        const channel = (await this.props.api.query.hopr.channels(this.props.channelId)) as ChannelEnum
+
+        // @ts-ignore
+        if (channel.isPendingSettlement) {
+          // @ts-ignore
+          return channel.asPendingSettlement as PendingSettlement
+        } else {
+          return reject(`Channel state must be 'PendingSettlement', but is '${channel.type}'`)
+        }
+      }
+    })
+  }
+
+  private handlers: Function[] = []
+
+  constructor(private props: ChannelCloserProps) {}
+
+  async initiateSettlement(): Promise<ChannelCloser> {
+    let now: u64 = (await this.props.api.query.timestamp.now()) as u64
+
+    await this.props.api.tx.hopr.initiateSettlement(this.props.counterparty).signAndSend(this.props.self)
+
+    this.initialised = true
+
+    this.props.eventRegistry.on(PushedBackSettlement(this.props.channelId), (event: Event) => {
+      this._end = event.data[0] as u64
+    })
+
+    this._end = new u64(now.iadd(await this.props.pendingWindow))
+
+    this.timer = await this.timeoutFactory()
+    return this
+  }
+
+  // optional
+  // oncePushedBack(handler?: EventHandler): void | Promise<ChannelCloser> {
+  //   Reflect.apply(checkInitialised, this, [])
+
+  //   const eventIdentifier = PushedBackSettlement(this.props.channelId)
+
+  //   if (isEventHandler(handler)) {
+  //     this.props.eventRegistry.once(eventIdentifier, handler)
+  //     return
+  //   }
+
+  //   return new Promise<ChannelCloser>(resolve => {
+  //     this.props.eventRegistry.once(eventIdentifier, () => resolve(this))
+  //   })
+  // }
+
+  onceClosed(): void | Promise<ChannelCloser> {
+    Reflect.apply(checkInitialised, this, [])
+
+    return new Promise((resolve, reject) => {
+      let index = this.handlers.push(() => {
+        this.handlers.splice(index - 1, 1)
+        return resolve()
+      })
+    })
+  }
+
+  private async timeoutFactory() {
+    const unsub = await this.props.api.query.timestamp.now(async (moment: u64) => {
+      if (moment.gt(await this.end)) {
+        this.handlers.forEach(handler => handler())
+      }
+      unsub()
+      return
+    })
+  }
 }
 
 async function checkFreeBalance(this: Pick<ChannelProps, 'api' | 'self'>, amount: Balance): Promise<void> {
@@ -230,4 +369,25 @@ async function checkFreeBalance(this: Pick<ChannelProps, 'api' | 'self'>, amount
     if ((balance as Balance).lt(amount))
       throw Error('Insufficient balance. Free balance must be greater than requested balance.')
   })
+}
+
+function checkInitialised(this: { initialised: boolean }) {
+  if (!this.initialised) throw Error('Cannot alter state unless module is not initialized')
+}
+
+function isEventHandler(handler: undefined | EventHandler): handler is EventHandler {
+  return handler != null
+}
+
+function submitTicket(this: Pick<ChannelProps, 'api'>, signedTicket: SignedLotteryTicket) {
+  throw Error('not implemented')
+  return this.api.tx.hopr.redeemTicket(signedTicket.signature)
+}
+
+function aggregateTickets() {
+  throw Error('not implemented')
+}
+
+function submitAggregatedTickets() {
+  throw Error('not implemented')
 }

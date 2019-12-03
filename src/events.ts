@@ -48,56 +48,75 @@ export class EventSignalling {
     }
   }
 
-  on(str: HoprEvent, handler: EventHandler, args?: SubscriptionArgs): () => void {
+  on(eventSubscription: HoprEventSubscription, handler: EventHandler): () => void {
     let index = 0
 
-    let eventRegistry: EventRegistry = this.registry[str] || {}
+    let eventRegistry: EventRegistry = this.registry[eventSubscription.selector] || {}
 
-    if (args != null) {
-      let argsIterator = args.entries()
-      let [key, value]: [number, Uint8Array] = argsIterator.next().value
-      args.delete(key)
+    if (eventSubscription.args != null) {
+      let argsIterator = eventSubscription.args.entries()
+      let [argumentName, argumentValue]: [number, Uint8Array] = argsIterator.next().value
+      eventSubscription.args.delete(argumentName)
 
       if (eventRegistry.selectors != null) {
-        let argumentSelector: ArgumentSelector | undefined = eventRegistry.selectors.get(key)
+        let argumentSelector: ArgumentSelector | undefined = eventRegistry.selectors.get(argumentName)
 
         if (argumentSelector != null) {
-          let subscriptions: EventSubscription[] | undefined = argumentSelector.get(value)
+          let subscriptions: EventSubscription[] | undefined = argumentSelector.get(argumentValue)
 
           if (subscriptions != null) {
             let index = subscriptions.findIndex((subscription: EventSubscription) =>
-              compareEventSubscriptions(subscription.args, args)
+              compareEventSubscriptions(subscription.args, eventSubscription.args)
             )
             if (index >= 0) {
               subscriptions[index].handlers.push(handler)
             } else {
               subscriptions.push({
-                args,
+                args: eventSubscription.args,
                 handlers: [handler]
               })
             }
           } else {
             subscriptions = [
               {
-                args,
+                args: eventSubscription.args,
                 handlers: [handler]
               }
             ]
           }
-          argumentSelector.set(value, subscriptions)
+          argumentSelector.set(argumentValue, subscriptions)
         } else {
-          argumentSelector = new Map<Uint8Array, EventSubscription[]>([[value, [{
-            args,
-            handlers: [handler]
-          }]]])
+          argumentSelector = new Map<Uint8Array, EventSubscription[]>([
+            [
+              argumentValue,
+              [
+                {
+                  args: eventSubscription.args,
+                  handlers: [handler]
+                }
+              ]
+            ]
+          ])
         }
-        eventRegistry.selectors.set(key, argumentSelector)
+        eventRegistry.selectors.set(argumentName, argumentSelector)
       } else {
         eventRegistry = {
-          selectors: new Map<number, ArgumentSelector>([[key, new Map<Uint8Array, EventSubscription[]>([[value, [{
-            args,
-            handlers: [handler]
-          }]]])]])
+          selectors: new Map<number, ArgumentSelector>([
+            [
+              argumentName,
+              new Map<Uint8Array, EventSubscription[]>([
+                [
+                  argumentValue,
+                  [
+                    {
+                      args: eventSubscription.args,
+                      handlers: [handler]
+                    }
+                  ]
+                ]
+              ])
+            ]
+          ])
         }
       }
     } else {
@@ -108,27 +127,91 @@ export class EventSignalling {
     return () => {}
   }
 
-  once(str: HoprEvent, handler: EventHandler) {
+  once(str: HoprEventSubscription, handler: EventHandler) {
     this.on(str, handler)()
   }
 }
 
-export type HoprEvent = OpenedEvent | InitiatedSettlementEvent
-
-export type OpenedEvent = string
-
-export function Opened(channelId?: Hash, balanceA?: Balance, balance?: Balance): OpenedEvent {
-  return `hopr.Opened(${channelId?.toString() || ''},${balanceA?.toString() || ''},${balance?.toString() || ''})`
+export type HoprEventSubscription = {
+  selector: string
+  args?: SubscriptionArgs
 }
 
-export type InitiatedSettlementEvent = string
+export function Opened(channelId?: Hash, balanceA?: Balance, balance?: Balance): HoprEventSubscription {
+  if (channelId != null || balanceA != null || balance != null) {
+    let args = new Map<number, Uint8Array>()
 
-export function InitiatedSettlement(channelId: Hash, balanceA: Balance): InitiatedSettlementEvent {
-  return `hopr.InitiatedSettlement(${channelId.toString()},${balanceA.toString()})`
+    if (channelId != null) {
+      args.set(0, channelId.toU8a())
+    }
+
+    if (balanceA != null) {
+      args.set(1, balanceA.toU8a())
+    }
+
+    if (balance != null) {
+      args.set(2, balance.toU8a())
+    }
+
+    return {
+      selector: `hopr.Opened`,
+      args
+    }
+  }
+
+  return {
+    selector: `hopr.Opened`
+  }
 }
 
-function compareEventSubscriptions(a: SubscriptionArgs, b: SubscriptionArgs) {
-  if (a.size != b.size) {
+export function InitiatedSettlement(channelId: Hash, balanceA?: Balance): HoprEventSubscription {
+  if (channelId != null || balanceA != null) {
+    let args = new Map<number, Uint8Array>()
+
+    if (channelId != null) {
+      args.set(0, channelId.toU8a())
+    }
+
+    if (balanceA != null) {
+      args.set(1, balanceA.toU8a())
+    }
+
+    return {
+      selector: `hopr.InitiatedSettlement`,
+      args
+    }
+  }
+
+  return {
+    selector: `hopr.InitiatedSettlement`
+  }
+}
+
+export function PushedBackSettlement(channelId: Hash, balanceA?: Balance) {
+  if (channelId != null || balanceA != null) {
+    let args = new Map<number, Uint8Array>()
+
+    if (channelId != null) {
+      args.set(0, channelId.toU8a())
+    }
+
+    if (balanceA != null) {
+      args.set(1, balanceA.toU8a())
+    }
+
+    return {
+      selector: `hopr.PushedBackSettlement`,
+      args
+    }
+  }
+
+  return {
+    selector: `hopr.PushedBackSettlement`
+  }
+}
+
+function compareEventSubscriptions(a: SubscriptionArgs, b?: SubscriptionArgs) {
+  if (b == null || a.size != b.size) {
     return false
   }
 

@@ -5,8 +5,8 @@
   "author": "Robert Kiel <robert.kiel@validitylabs.org>",
   "license": "LGPL-3.0-only",
   "dependencies": {
-    "@polkadot/api": "^0.96.1",
-    "@polkadot/util": "^1.6.1",
+    "@polkadot/api": "^0.98.1",
+    "@polkadot/util": "^1.7.1",
     "@polkadot/wasm-crypto": "^0.14.1"
   },
   "main": "./lib/index.js",
@@ -16,10 +16,9 @@
   },
   "devDependencies": {
     "@types/levelup": "^3.1.1",
-    "@types/node": "^12.12.8",
-    "@hoprnet/hopr-polkadot": "hoprnet/hopr-polkadot",
-    "ts-node": "^8.5.2",
-    "typescript": "^3.7.2"
+    "@types/node": "^12.12.14",
+    "ts-node": "^8.5.4",
+    "typescript": "^3.7.3"
   },
   "prettier": {
     "tabWidth": 2,

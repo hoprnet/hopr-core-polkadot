@@ -18,7 +18,6 @@ import { ApiPromise } from '@polkadot/api'
 import { Nonce, Channel as ChannelKey } from './db_keys'
 import { Opened, PushedBackSettlement, EventSignalling, EventHandler } from './events'
 import { u64 } from '@polkadot/types'
-import { CodecArg } from '@polkadot/types/types'
 import { Event } from '@polkadot/types/interfaces'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
@@ -107,7 +106,7 @@ export class Channel {
       if (isPartyA(this.props.self, this.props.counterparty)) {
         return resolve(this.balance_a)
       } else {
-        return resolve(new Balance((await this.balance).sub(await this.balance_a)))
+        return resolve(this.props.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
       }
     })
   }
@@ -115,7 +114,7 @@ export class Channel {
   get currentBalanceOfCounterparty(): Promise<Balance> {
     return new Promise(async resolve => {
       if (isPartyA(this.props.self, this.props.counterparty)) {
-        return resolve(new Balance((await this.balance).sub(await this.balance_a)))
+        return resolve(this.props.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
       } else {
         return resolve(this.balance_a)
       }
@@ -128,9 +127,9 @@ export class Channel {
     challenge: Hash,
     winProb: Hash
   ): Promise<SignedLotteryTicket> {
-    const { epoch } = (await this.props.api.query.hopr.state(this.props.counterparty)) as State
+    const { epoch } = await this.props.api.query.hopr.state<State>(this.props.counterparty)
 
-    const ticket = new LotteryTicket({
+    const ticket = new LotteryTicket(this.props.api.registry, {
       channelId: getId(this.props.self, this.props.counterparty),
       epoch,
       challenge,
@@ -189,7 +188,7 @@ export class Channel {
   private async testAndSetNonce(signature: Uint8Array): Promise<void> {
     const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
 
-    const key = Nonce(this.channelId, new Hash(nonce))
+    const key = Nonce(this.channelId, this.props.api.createType('Hash', nonce))
 
     await this.props.db.get(key).then(_ => {
       throw Error('Nonces must not be used twice.')
@@ -216,7 +215,7 @@ class ChannelOpener {
     } else {
       this.props.amount.isub(newAmount)
     }
-
+    
     // @ts-ignore
     await this.props.api.tx.hopr.create(newAmount, this.props.counterparty).signAndSend(this.props.self)
 
@@ -244,13 +243,13 @@ class ChannelOpener {
     Reflect.apply(checkInitialised, this, [])
 
     if (isEventHandler(handler)) {
-      const unsubscribe = await this.props.api.query.hopr.channels(this.props.channelId, channel => {
+      const unsubscribe = await this.props.api.query.hopr.channels<ChannelEnum>(this.props.channelId, channel => {
         unsubscribe()
       })
     }
 
     return new Promise<ChannelOpener>(async resolve => {
-      const unsubscribe = await this.props.api.query.hopr.channels(this.props.channelId, channel => {
+      const unsubscribe = await this.props.api.query.hopr.channels<ChannelEnum>(this.props.channelId, channel => {
         unsubscribe()
         resolve(this)
       })
@@ -292,12 +291,12 @@ class ChannelCloser {
       if (this._end != null) {
         return resolve(this._end)
       } else {
-        const channel = (await this.props.api.query.hopr.channels(this.props.channelId)) as ChannelEnum
+        const channel = await this.props.api.query.hopr.channels<ChannelEnum>(this.props.channelId)
 
         // @ts-ignore
         if (channel.isPendingSettlement) {
           // @ts-ignore
-          return channel.asPendingSettlement as PendingSettlement
+          return channel.asPendingSettlement
         } else {
           return reject(`Channel state must be 'PendingSettlement', but is '${channel.type}'`)
         }
@@ -310,7 +309,7 @@ class ChannelCloser {
   constructor(private props: ChannelCloserProps) {}
 
   async initiateSettlement(): Promise<ChannelCloser> {
-    let now: u64 = (await this.props.api.query.timestamp.now()) as u64
+    let now: u64 = await this.props.api.query.timestamp.now<u64>()
 
     await this.props.api.tx.hopr.initiateSettlement(this.props.counterparty).signAndSend(this.props.self)
 
@@ -320,7 +319,7 @@ class ChannelCloser {
       this._end = event.data[0] as u64
     })
 
-    this._end = new u64(now.iadd(await this.props.pendingWindow))
+    this._end = this.props.api.createType('u64', now.iadd(await this.props.pendingWindow))
 
     this.timer = await this.timeoutFactory()
     return this
@@ -354,7 +353,7 @@ class ChannelCloser {
   }
 
   private async timeoutFactory() {
-    const unsub = await this.props.api.query.timestamp.now(async (moment: u64) => {
+    const unsub = await this.props.api.query.timestamp.now<u64>(async moment => {
       if (moment.gt(await this.end)) {
         this.handlers.forEach(handler => handler())
       }
@@ -365,8 +364,8 @@ class ChannelCloser {
 }
 
 async function checkFreeBalance(this: Pick<ChannelProps, 'api' | 'self'>, amount: Balance): Promise<void> {
-  this.api.query.balances.freeBalance(this.self).then((balance: CodecArg) => {
-    if ((balance as Balance).lt(amount))
+  this.api.query.balances.freeBalance<Balance>(this.self).then(balance => {
+    if (balance.lt(amount))
       throw Error('Insufficient balance. Free balance must be greater than requested balance.')
   })
 }

@@ -1,4 +1,5 @@
 import { Null, u32, u64, u128, H256 } from '@polkadot/types'
+import { Registry } from '@polkadot/types/types';
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import {
   Moment as IMoment,
@@ -15,8 +16,9 @@ export class AccountId extends Public implements IAccountId {}
 export class TicketEpoch extends u32 {}
 
 export class ChannelBalance extends Struct {
-  constructor(value: any) {
+  constructor(registry: Registry, value: any) {
     super(
+      registry,
       {
         balance: Balance,
         balance_a: Balance
@@ -47,8 +49,9 @@ export class Channel extends Enum.with({
 }) {}
 
 export class State extends Struct {
-  constructor(value: any) {
+  constructor(registry: Registry, value: any) {
     super(
+      registry,
       {
         epoch: TicketEpoch,
         secret: Hash,
@@ -72,8 +75,9 @@ export class State extends Struct {
 }
 
 export class LotteryTicket extends Struct {
-  constructor(value: any) {
+  constructor(registry: Registry, value: any) {
     super(
+      registry,
       {
         channelId: Hash,
         challenge: Hash,

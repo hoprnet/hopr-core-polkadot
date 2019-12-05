@@ -15,6 +15,7 @@ import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
 import { isPartyA, getId } from './utils'
 import { LevelUp } from 'levelup'
 import { ApiPromise } from '@polkadot/api'
+import { KeyringPair } from '@polkadot/keyring/types'
 import { Nonce, Channel as ChannelKey } from './db_keys'
 import { Opened, PushedBackSettlement, EventSignalling, EventHandler } from './events'
 import { u64 } from '@polkadot/types'
@@ -23,7 +24,7 @@ import { Event } from '@polkadot/types/interfaces'
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
 export type ChannelProps = {
-  self: AccountId
+  self: KeyringPair
   counterparty: AccountId
   db: LevelUp
   api: ApiPromise
@@ -36,7 +37,7 @@ export class Channel {
   channelId: Hash
 
   constructor(public props: ChannelProps) {
-    this.channelId = getId(this.props.self, this.props.counterparty)
+    this.channelId = getId(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)
   }
 
   private get channel(): Promise<ChannelEnum> {
@@ -103,7 +104,7 @@ export class Channel {
 
   get currentBalance(): Promise<Balance> {
     return new Promise(async resolve => {
-      if (isPartyA(this.props.self, this.props.counterparty)) {
+      if (isPartyA(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)) {
         return resolve(this.balance_a)
       } else {
         return resolve(this.props.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
@@ -113,7 +114,7 @@ export class Channel {
 
   get currentBalanceOfCounterparty(): Promise<Balance> {
     return new Promise(async resolve => {
-      if (isPartyA(this.props.self, this.props.counterparty)) {
+      if (isPartyA(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)) {
         return resolve(this.props.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
       } else {
         return resolve(this.balance_a)
@@ -130,14 +131,14 @@ export class Channel {
     const { epoch } = await this.props.api.query.hopr.state<State>(this.props.counterparty)
 
     const ticket = new LotteryTicket(this.props.api.registry, {
-      channelId: getId(this.props.self, this.props.counterparty),
+      channelId: getId(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty),
       epoch,
       challenge,
       amount,
       winProb
     })
 
-    const signature = sr25519Sign(this.props.self.toU8a(), secretKey, ticket.toU8a())
+    const signature = sr25519Sign(this.props.self.publicKey, secretKey, ticket.toU8a())
 
     return {
       lotteryTicket: ticket,
@@ -162,7 +163,7 @@ export class Channel {
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
   static async open(props: ChannelProps, amount: Balance, eventRegistry: EventSignalling): Promise<ChannelOpener> {
-    let channelId = getId(props.self, props.counterparty)
+    let channelId = getId(props.api.createType('AccountId', props.self.publicKey), props.counterparty)
 
     await props.db.get(ChannelKey(channelId)).then(_ => {
       throw Error('Channel must not exit.')
@@ -210,14 +211,13 @@ class ChannelOpener {
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
     await Reflect.apply(checkFreeBalance, this, [newAmount])
 
-    if (isPartyA(this.props.self, this.props.counterparty)) {
+    if (isPartyA(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)) {
       this.props.amount.iadd(newAmount)
     } else {
       this.props.amount.isub(newAmount)
     }
-    
-    // @ts-ignore
-    await this.props.api.tx.hopr.create(newAmount, this.props.counterparty).signAndSend(this.props.self)
+
+    await this.props.api.tx.hopr.create(newAmount.toU8a(), this.props.counterparty).signAndSend(this.props.self)
 
     this.initialised = true
 
@@ -363,10 +363,9 @@ class ChannelCloser {
   }
 }
 
-async function checkFreeBalance(this: Pick<ChannelProps, 'api' | 'self'>, amount: Balance): Promise<void> {
-  this.api.query.balances.freeBalance<Balance>(this.self).then(balance => {
-    if (balance.lt(amount))
-      throw Error('Insufficient balance. Free balance must be greater than requested balance.')
+async function checkFreeBalance(this: { props: Pick<ChannelProps, 'api' | 'self'>}, amount: Balance): Promise<void> {
+  this.props.api.query.balances.freeBalance<Balance>(this.props.api.createType('AccountId', this.props.self.publicKey)).then(balance => {
+    if (balance.lt(amount)) throw Error('Insufficient balance. Free balance must be greater than requested balance.')
   })
 }
 
@@ -374,7 +373,7 @@ function checkInitialised(this: { initialised: boolean }) {
   if (!this.initialised) throw Error('Cannot alter state unless module is not initialized')
 }
 
-function isEventHandler(handler: undefined | EventHandler): handler is EventHandler {
+function isEventHandler(handler?: EventHandler): handler is EventHandler {
   return handler != null
 }
 

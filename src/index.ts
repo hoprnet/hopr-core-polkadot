@@ -1,18 +1,17 @@
-import { ApiPromise, WsProvider, Keyring } from '@polkadot/api'
+import { ApiPromise, WsProvider } from '@polkadot/api'
+import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
 import { Types, Balance, AccountId } from './srml_types'
 import { Channel } from './channel'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
-import { createType } from '@polkadot/types';
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
 export type HoprPolkadotProps = {
-  self: AccountId
+  self: KeyringPair
   api: ApiPromise
   db: LevelUp
-  keyring: Keyring
 }
 
 export default class HoprPolkadot {
@@ -29,19 +28,16 @@ export default class HoprPolkadot {
    *
    * @param db database instance
    */
-  static async create(db: LevelUp, keyring: Keyring): Promise<HoprPolkadot> {
+  static async create(db: LevelUp, keyPair: KeyringPair): Promise<HoprPolkadot> {
     const api = await ApiPromise.create({
       provider: new WsProvider(POLKADOT_URI),
       types: Types
     })
 
-    keyring.addFromUri('//Alice', { name: 'Alice default' })
-
     return new HoprPolkadot({
       api,
       db,
-      keyring: new Keyring({ type: 'sr25519' }),
-      self: createType(api.registry, 'AccountId', keyring.publicKeys[0])
+      self: keyPair
     })
   }
 

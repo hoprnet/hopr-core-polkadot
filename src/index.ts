@@ -28,9 +28,9 @@ export default class HoprPolkadot {
    *
    * @param db database instance
    */
-  static async create(db: LevelUp, keyPair: KeyringPair): Promise<HoprPolkadot> {
+  static async create(db: LevelUp, keyPair: KeyringPair, uri: string = POLKADOT_URI): Promise<HoprPolkadot> {
     const api = await ApiPromise.create({
-      provider: new WsProvider(POLKADOT_URI),
+      provider: new WsProvider(uri),
       types: Types
     })
 

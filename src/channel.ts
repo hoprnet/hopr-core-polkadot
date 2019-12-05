@@ -37,7 +37,7 @@ export class Channel {
   channelId: Hash
 
   constructor(public props: ChannelProps) {
-    this.channelId = getId(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)
+    this.channelId = getId(this.props.api, this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)
   }
 
   private get channel(): Promise<ChannelEnum> {
@@ -131,7 +131,7 @@ export class Channel {
     const { epoch } = await this.props.api.query.hopr.state<State>(this.props.counterparty)
 
     const ticket = new LotteryTicket(this.props.api.registry, {
-      channelId: getId(this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty),
+      channelId: getId(this.props.api, this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty),
       epoch,
       challenge,
       amount,
@@ -163,7 +163,7 @@ export class Channel {
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
   static async open(props: ChannelProps, amount: Balance, eventRegistry: EventSignalling): Promise<ChannelOpener> {
-    let channelId = getId(props.api.createType('AccountId', props.self.publicKey), props.counterparty)
+    let channelId = getId(props.api, props.api.createType('AccountId', props.self.publicKey), props.counterparty)
 
     await props.db.get(ChannelKey(channelId)).then(_ => {
       throw Error('Channel must not exit.')

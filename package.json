@@ -12,11 +12,22 @@
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "scripts": {
-    "build": "tsc -d -p ."
+    "build": "tsc -d -p .",
+    "test": "ts-mocha -p ./tsconfig.json src/**/*.spec.ts"
+  },
+  "engines": {
+    "yarn": "1.9.2"
   },
   "devDependencies": {
     "@types/levelup": "^3.1.1",
+    "@types/memdown": "^3.0.0",
+    "@types/mocha": "^5.2.7",
     "@types/node": "^12.12.14",
+    "chai": "^4.2.0",
+    "levelup": "^4.3.2",
+    "memdown": "^5.1.0",
+    "mocha": "^6.2.2",
+    "ts-mocha": "^6.0.0",
     "ts-node": "^8.5.4",
     "typescript": "^3.7.3"
   },

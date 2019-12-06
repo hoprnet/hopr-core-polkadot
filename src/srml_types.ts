@@ -117,6 +117,8 @@ export const Types = {
   Public,
   ChannelBalance,
   Channel,
+  ChannelId: Hash,
+  PreImage: Hash,
   State,
   LotteryTicket
 }

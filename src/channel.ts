@@ -33,11 +33,28 @@ export type ChannelProps = {
 export class Channel {
   private _channel?: ChannelEnum
   private _settlementWindow?: u64
+  private _channelId?: Hash
 
-  channelId: Hash
+  constructor(public props: ChannelProps) {}
 
-  constructor(public props: ChannelProps) {
-    this.channelId = getId(this.props.api, this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty)
+  get channelId(): Promise<Hash> {
+    return new Promise(async (resolve, reject) => {
+      if (this._channelId != null) {
+        return resolve(this._channelId)
+      }
+
+      try {
+        this._channelId = await getId(
+          this.props.api,
+          this.props.api.createType('AccountId', this.props.self.publicKey),
+          this.props.counterparty
+        )
+      } catch (err) {
+        return reject(err)
+      }
+
+      resolve(this._channelId)
+    })
   }
 
   private get channel(): Promise<ChannelEnum> {
@@ -46,7 +63,7 @@ export class Channel {
         return resolve(this._channel)
       }
       try {
-        this._channel = new ChannelEnum(await this.props.db.get(ChannelKey(this.channelId)))
+        this._channel = new ChannelEnum(await this.props.db.get(ChannelKey(await this.channelId)))
       } catch (err) {
         return reject(err)
       }
@@ -131,7 +148,11 @@ export class Channel {
     const { epoch } = await this.props.api.query.hopr.state<State>(this.props.counterparty)
 
     const ticket = new LotteryTicket(this.props.api.registry, {
-      channelId: getId(this.props.api, this.props.api.createType('AccountId', this.props.self.publicKey), this.props.counterparty),
+      channelId: getId(
+        this.props.api,
+        this.props.api.createType('AccountId', this.props.self.publicKey),
+        this.props.counterparty
+      ),
       epoch,
       challenge,
       amount,
@@ -163,24 +184,26 @@ export class Channel {
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
   static async open(props: ChannelProps, amount: Balance, eventRegistry: EventSignalling): Promise<ChannelOpener> {
-    let channelId = getId(props.api, props.api.createType('AccountId', props.self.publicKey), props.counterparty)
+    let channelId = await getId(props.api, props.api.createType('AccountId', props.self.publicKey), props.counterparty)
 
     await props.db.get(ChannelKey(channelId)).then(_ => {
       throw Error('Channel must not exit.')
-    })
+    }).catch(_ => {})
 
-    return new ChannelOpener({
+    const channelOpener = new ChannelOpener({
       ...props,
       eventRegistry,
       channelId,
       amount
-    }).increaseFunds(amount)
+    })
+    
+    return channelOpener.increaseFunds(amount)
   }
 
-  initiateSettlement(eventRegistry: EventSignalling): Promise<ChannelCloser> {
+  async initiateSettlement(eventRegistry: EventSignalling): Promise<ChannelCloser> {
     return new ChannelCloser({
       ...this.props,
-      channelId: this.channelId,
+      channelId: await this.channelId,
       pendingWindow: this.settlementWindow,
       eventRegistry
     }).initiateSettlement()
@@ -189,7 +212,7 @@ export class Channel {
   private async testAndSetNonce(signature: Uint8Array): Promise<void> {
     const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
 
-    const key = Nonce(this.channelId, this.props.api.createType('Hash', nonce))
+    const key = Nonce(await this.channelId, this.props.api.createType('Hash', nonce))
 
     await this.props.db.get(key).then(_ => {
       throw Error('Nonces must not be used twice.')
@@ -203,7 +226,7 @@ type ChannelOpenerProps = ChannelProps & {
   amount: Balance
 }
 
-class ChannelOpener {
+export class ChannelOpener {
   initialised: boolean = false
 
   constructor(private props: ChannelOpenerProps) {}
@@ -279,7 +302,7 @@ type ChannelCloserProps = Pick<ChannelProps, 'api' | 'counterparty' | 'self'> & 
   channelId: Hash
 }
 
-class ChannelCloser {
+export class ChannelCloser {
   private _end?: u64
 
   initialised: boolean = false
@@ -363,10 +386,12 @@ class ChannelCloser {
   }
 }
 
-async function checkFreeBalance(this: { props: Pick<ChannelProps, 'api' | 'self'>}, amount: Balance): Promise<void> {
-  this.props.api.query.balances.freeBalance<Balance>(this.props.api.createType('AccountId', this.props.self.publicKey)).then(balance => {
-    if (balance.lt(amount)) throw Error('Insufficient balance. Free balance must be greater than requested balance.')
-  })
+async function checkFreeBalance(this: { props: Pick<ChannelProps, 'api' | 'self'> }, amount: Balance): Promise<void> {
+  this.props.api.query.balances
+    .freeBalance<Balance>(this.props.api.createType('AccountId', this.props.self.publicKey))
+    .then(balance => {
+      if (balance.lt(amount)) throw Error('Insufficient balance. Free balance must be greater than requested balance.')
+    })
 }
 
 function checkInitialised(this: { initialised: boolean }) {

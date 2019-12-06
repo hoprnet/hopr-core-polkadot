@@ -38,13 +38,12 @@ export function Nonce(channelId: Hash, nonce: Hash): Uint8Array {
   ])
 }
 
-export function OnChainSecret(channelId: Hash): Uint8Array {
-  const subPrefix = encoder.encode('onChainSecret-')
+export function OnChainSecret(): Uint8Array {
+  const subPrefix = encoder.encode('onChainSecret')
 
   return allocationHelper([
     [PREFIX.length, PREFIX],
     [subPrefix.length, subPrefix],
-    [channelId.length, channelId]
   ])
 }
 

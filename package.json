@@ -27,7 +27,6 @@
     "levelup": "^4.3.2",
     "memdown": "^5.1.0",
     "mocha": "^6.2.2",
-    "ts-mocha": "^6.0.0",
     "ts-node": "^8.5.4",
     "typescript": "^3.7.3"
   },
@@ -36,5 +35,10 @@
     "semi": false,
     "singleQuote": true,
     "printWidth": 120
+  },
+  "mocha": {
+    "extension": ["ts"],
+    "spec": "src/**/*.spec.ts",
+    "require": "ts-node/register"
   }
 }

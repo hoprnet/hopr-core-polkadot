@@ -1,17 +1,13 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
-import { SignatureOptions } from '@polkadot/types/types'
 import { LevelUp } from 'levelup'
-import { Channel as ChannelKey } from './db_keys'
 import { EventSignalling } from './events'
-import { Types, Balance, AccountId } from './srml_types'
-import { Channel, ChannelOpener } from './channel'
+import { Types, Balance } from './srml_types'
 import { OnChainSecret } from './db_keys'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { randomBytes } from 'crypto'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import { u8aConcat } from '@polkadot/util'
-import { getId } from './utils'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 

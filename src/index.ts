@@ -7,7 +7,6 @@ import { OnChainSecret } from './db_keys'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { randomBytes } from 'crypto'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
-import { u8aConcat } from '@polkadot/util'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
@@ -55,13 +54,15 @@ export default class HoprPolkadot {
   }
 
   get nonce(): Promise<number> {
+    if (this._nonce != null) {
+      return Promise.resolve(this._nonce++)
+    }
+
     return new Promise<number>(async (resolve, reject) => {
-      if (this._nonce == null) {
-        try {
-          this._nonce = (await this._props.api.query.system.accountNonce(this._props.self.publicKey)).toNumber()
-        } catch (err) {
-          return reject(err)
-        }
+      try {
+        this._nonce = (await this._props.api.query.system.accountNonce(this._props.self.publicKey)).toNumber()
+      } catch (err) {
+        return reject(err)
       }
 
       return resolve(this._nonce++)
@@ -96,7 +97,7 @@ export default class HoprPolkadot {
     this.started = true
   }
 
-  async initOnchainValues() {
+  async initOnchainValues(nonce?: number) {
     this.started
 
     let secret = new Uint8Array(randomBytes(32))
@@ -112,8 +113,8 @@ export default class HoprPolkadot {
     }
 
     await this._props.api.tx.hopr
-      .init(u8aConcat(new Uint8Array([0, 0, 0, 0]), this._props.self.publicKey), secret)
-      .signAndSend(this._props.self, { nonce: await this.nonce })
+      .init(this._props.api.createType('Hash', this._props.self.publicKey), secret)
+      .signAndSend(this._props.self, { nonce: nonce || await this.nonce })
   }
 
   async checkFreeBalance(newBalance: Balance): Promise<void> {
@@ -125,7 +126,13 @@ export default class HoprPolkadot {
       throw Error('Insufficient balance. Free balance must be greater than requested balance.')
   }
 
-  stop() {
+  async stop(): Promise<void> {
     this._props.api.disconnect()
+
+    return new Promise(resolve => {
+      this._props.api.once('disconnected', () => {
+        resolve()
+      })
+    })
   }
 }

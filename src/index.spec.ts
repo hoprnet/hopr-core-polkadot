@@ -5,6 +5,7 @@ import { existsSync } from 'fs'
 import { resolve } from 'path'
 
 import { cryptoWaitReady } from '@polkadot/util-crypto'
+import { Channel } from './channel'
 import { Keyring } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
 
@@ -13,8 +14,7 @@ import { waitForNextBlock, wait, getId } from './utils'
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
 
-import { Channel } from './channel'
-import { Channel as ChannelEnum, Funded as ChannelFunded, ChannelBalance } from './srml_types'
+import chalk from 'chalk'
 
 import config from './config.json'
 
@@ -33,7 +33,6 @@ describe('Hopr Polkadot', async function() {
   let polkadotNode: ChildProcess
 
   let hoprAlice: HoprPolkadot, hoprBob: HoprPolkadot
-  let nonceAlice: number, nonceBob: number
 
   before(async function() {
     this.timeout(TWENTY_MINUTES)
@@ -79,7 +78,7 @@ describe('Hopr Polkadot', async function() {
 
     polkadotNode.stdout?.on('data', data => console.log(data.toString()))
 
-    await wait(4 * 1000)
+    await wait(14 * 1000)
     ;[hoprAlice, hoprBob] = await Promise.all([
       HoprPolkadot.create(LevelUp(Memdown()), Alice),
       HoprPolkadot.create(LevelUp(Memdown()), Bob)
@@ -90,14 +89,12 @@ describe('Hopr Polkadot', async function() {
       hoprAlice.start(),
       hoprBob.start()
     ])
-    ;[nonceAlice, nonceBob] = await Promise.all([
-      hoprAlice.api.query.system.accountNonce(Alice.publicKey).then(nonce => nonce.toNumber()),
-      hoprBob.api.query.system.accountNonce(Bob.publicKey).then(nonce => nonce.toNumber())
-    ])
+
+    const [first, second, third] = [await hoprAlice.nonce, await hoprAlice.nonce, await hoprAlice.nonce]
 
     await Promise.all([
       /* prettier-ignore */
-      hoprAlice.initOnchainValues(),
+      hoprAlice.initOnchainValues(first),
       hoprBob.initOnchainValues(),
       hoprAlice.api.tx.sudo
         .sudo(
@@ -107,7 +104,7 @@ describe('Hopr Polkadot', async function() {
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(Alice, { nonce: nonceAlice++ }),
+        .signAndSend(Alice, { nonce: second }),
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
@@ -116,38 +113,43 @@ describe('Hopr Polkadot', async function() {
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(Alice, { nonce: nonceBob++ })
+        .signAndSend(Alice, { nonce: third })
     ])
 
     await waitForNextBlock(hoprAlice.api)
 
-    // console.log(Alice.publicKey)
-    // console.log(await hoprAlice.api.query.hopr.states(Alice.publicKey))
+    console.log(`Alice's new balance '${chalk.green((await hoprAlice.api.query.balances.freeBalance(Alice.publicKey)).toString())}'`)
   })
 
   afterEach(() => {
     polkadotNode.kill()
-  })
-
-  after(() => {
     hoprAlice.stop()
+    hoprBob.stop()
   })
 
   it('should connect', async function() {
     this.timeout(TWENTY_MINUTES)
 
-    const balance = hoprAlice.api.createType('Balance', 1)
+    const balance = hoprAlice.api.createType('Balance', 12345)
 
-    const channelEnum = new ChannelEnum(
-      hoprAlice.api.registry,
-      new ChannelFunded(
-        hoprAlice.api.registry,
-        new ChannelBalance(hoprAlice.api.registry, {
-          balance,
-          balanceA: balance
-        })
+    const channelEnum = hoprAlice.api.createType(
+      // @ts-ignore
+      'Channel',
+      hoprAlice.api.createType(
+        // @ts-ignore
+        'Funded',
+        hoprAlice.api.createType(
+          // @ts-ignore
+          'ChannelBalance',
+          {
+            balance,
+            balanceA: balance
+          }
+        )
       )
     )
+    console.log(chalk.green('Opening channel'))
+    
     const channelOpener = await Channel.open(
       {
         hoprPolkadot: hoprAlice,
@@ -157,13 +159,14 @@ describe('Hopr Polkadot', async function() {
       Promise.resolve(Bob.sign(channelEnum.toU8a()))
     )
 
+    console.log('channel opened')
+
     const channelId = await getId(
       hoprAlice.api,
       hoprAlice.api.createType('AccountId', Alice.publicKey),
       hoprAlice.api.createType('AccountId', Bob.publicKey)
     )
 
-    await waitForNextBlock(hoprAlice.api)
     await waitForNextBlock(hoprAlice.api)
 
     const channel = await hoprAlice.api.query.hopr.channels(channelId)

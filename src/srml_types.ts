@@ -1,5 +1,5 @@
 import { Null, u32, u64, u128, H256 } from '@polkadot/types'
-import { Registry } from '@polkadot/types/types';
+import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import {
   Moment as IMoment,
@@ -36,17 +36,73 @@ export class ChannelBalance extends Struct {
   }
 }
 
-export class Uninitialized extends Null {}
-export class Funded extends ChannelBalance {}
-export class Active extends ChannelBalance {}
-export class PendingSettlement extends Tuple.with([ChannelBalance, Moment]) {}
+export class Uninitialized extends Null {
+  toRawType() {
+    return 'Uninitialized'
+  }
+}
 
-export class Channel extends Enum.with({
-  Uninitialized,
-  Funded,
-  Active,
-  PendingSettlement
-}) {}
+export class Funded extends ChannelBalance {
+  toRawType() {
+    return 'Funded'
+  }
+}
+
+export class Active extends ChannelBalance {
+  toRawType() {
+    return 'Active'
+  }
+}
+
+export class PendingSettlement extends Tuple.with([ChannelBalance, Moment]) {
+  toRawType() {
+    return 'PendingSettlement'
+  }
+}
+
+export class Channel extends Enum {
+  constructor(registry: Registry, value: Uninitialized | Funded | Active | PendingSettlement) {
+    let index
+
+    switch (value.toRawType()) {
+      case 'Uninitialized':
+        index = 0
+        break
+      case 'Funded':
+        index = 1
+        break
+      case 'Active':
+        index = 2
+        break
+      case 'PendingSettlement':
+        index = 3
+        break
+    }
+
+    super(
+      registry,
+      {
+        uninitialized: Uninitialized,
+        funded: Funded,
+        active: Active,
+        pendingSettlement: PendingSettlement
+      },
+      value,
+      index
+    )
+  }
+
+  toRawType() {
+    return 'Channel'
+  }
+}
+
+// .with({
+//   Uninitialized,
+//   Funded,
+//   Active,
+//   PendingSettlement
+// }) {}
 
 export class State extends Struct {
   constructor(registry: Registry, value: any) {
@@ -111,14 +167,15 @@ export class LotteryTicket extends Struct {
 }
 
 export const Types = {
-  Balance,
-  Moment,
-  Hash,
-  Public,
-  ChannelBalance,
-  Channel,
+  Balance: Balance,
+  Moment: Moment,
+  Hash: Hash,
+  Public: Public,
+  ChannelBalance: ChannelBalance,
+  Channel: Channel,
+  Funded: Funded,
   ChannelId: Hash,
   PreImage: Hash,
-  State,
-  LotteryTicket
+  State: State,
+  LotteryTicket: LotteryTicket
 }

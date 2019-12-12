@@ -43,7 +43,7 @@ export function OnChainSecret(): Uint8Array {
 
   return allocationHelper([
     [PREFIX.length, PREFIX],
-    [subPrefix.length, subPrefix],
+    [subPrefix.length, subPrefix]
   ])
 }
 

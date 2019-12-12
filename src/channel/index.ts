@@ -34,17 +34,19 @@ export class Channel {
   private constructor(public props: ChannelProps) {}
 
   get channelId(): Promise<Hash> {
+    if (this._channelId != null) {
+      return Promise.resolve<Hash>(this._channelId)
+    }
+
     return new Promise(async (resolve, reject) => {
-      if (this._channelId == null) {
-        try {
-          this._channelId = await getId(
-            this.props.hoprPolkadot.api,
-            this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
-            this.props.counterparty
-          )
-        } catch (err) {
-          return reject(err)
-        }
+      try {
+        this._channelId = await getId(
+          this.props.hoprPolkadot.api,
+          this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
+          this.props.counterparty
+        )
+      } catch (err) {
+        return reject(err)
       }
 
       resolve(this._channelId)
@@ -52,13 +54,19 @@ export class Channel {
   }
 
   private get channel(): Promise<ChannelEnum> {
+    if (this._channel != null) {
+      return Promise.resolve<ChannelEnum>(this._channel)
+    }
+
     return new Promise<ChannelEnum>(async (resolve, reject) => {
-      if (this._channel == null) {
-        try {
-          this._channel = new ChannelEnum(await this.props.hoprPolkadot.db.get(ChannelKey(await this.channelId)))
-        } catch (err) {
-          return reject(err)
-        }
+      try {
+        this._channel = this.props.hoprPolkadot.api.createType(
+          // @ts-ignore
+          'Channel',
+          await this.props.hoprPolkadot.db.get(ChannelKey(await this.channelId))
+        )
+      } catch (err) {
+        return reject(err)
       }
 
       return resolve(this._channel)
@@ -66,13 +74,15 @@ export class Channel {
   }
 
   get settlementWindow(): Promise<Moment> {
+    if (this._settlementWindow != null) {
+      return Promise.resolve<Moment>(this._settlementWindow)
+    }
+
     return new Promise<Moment>(async (resolve, reject) => {
-      if (this._settlementWindow == null) {
-        try {
-          this._settlementWindow = this.props.hoprPolkadot.api.consts.hopr.pendingWindow as Moment
-        } catch (err) {
-          return reject(err)
-        }
+      try {
+        this._settlementWindow = this.props.hoprPolkadot.api.consts.hopr.pendingWindow as Moment
+      } catch (err) {
+        return reject(err)
       }
 
       return resolve(this._settlementWindow)
@@ -114,36 +124,31 @@ export class Channel {
   }
 
   get currentBalance(): Promise<Balance> {
-    return new Promise(async resolve => {
-      if (
-        isPartyA(
-          this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
-          this.props.counterparty
-        )
-      ) {
-        return resolve(this.balance_a)
-      } else {
-        return resolve(
-          this.props.hoprPolkadot.api.createType('Balance', (await this.balance).sub(await this.balance_a))
-        )
-      }
+    if (
+      isPartyA(
+        this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
+        this.props.counterparty
+      )
+    ) {
+      return Promise.resolve<Balance>(this.balance_a)
+    }
+
+    return new Promise<Balance>(async resolve => {
+      return resolve(this.props.hoprPolkadot.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
     })
   }
 
   get currentBalanceOfCounterparty(): Promise<Balance> {
-    return new Promise(async resolve => {
-      if (
-        isPartyA(
-          this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
-          this.props.counterparty
-        )
-      ) {
-        return resolve(
-          this.props.hoprPolkadot.api.createType('Balance', (await this.balance).sub(await this.balance_a))
-        )
-      } else {
-        return resolve(this.balance_a)
-      }
+    if (
+      !isPartyA(
+        this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
+        this.props.counterparty
+      )
+    ) {
+      return Promise.resolve<Balance>(this.balance_a)
+    }
+    return new Promise<Balance>(async resolve => {
+      return resolve(this.props.hoprPolkadot.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
     })
   }
 

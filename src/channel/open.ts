@@ -2,9 +2,8 @@ import { Balance, AccountId, Channel as ChannelEnum, Hash } from '../srml_types'
 import { Signature } from '../types'
 import { isPartyA, getId } from '../utils'
 import { Channel as ChannelKey } from '../db_keys'
-import { Opened, EventHandler, HoprEventSubscription } from '../events'
+import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
-import { Channel } from '.'
 
 type ChannelOpenerProps = {
   hoprPolkadot: HoprPolkadot
@@ -13,20 +12,6 @@ type ChannelOpenerProps = {
 }
 
 export class ChannelOpener {
-  private _initialised: boolean = false
-
-  private get initialised(): boolean {
-    if (!this._initialised) {
-      throw Error('Cannot alter state unless module is not initialized')
-    }
-
-    return this._initialised
-  }
-
-  private set initialised(initialised: boolean) {
-    this._initialised = initialised
-  }
-
   private constructor(private _props: ChannelOpenerProps, private channelId: Hash) {}
 
   static async create(props: ChannelOpenerProps): Promise<ChannelOpener> {
@@ -47,7 +32,7 @@ export class ChannelOpener {
   }
 
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
-    this.initialised && (await this._props.hoprPolkadot.checkFreeBalance(newAmount))
+    await this._props.hoprPolkadot.checkFreeBalance(newAmount)
 
     if (
       isPartyA(
@@ -64,14 +49,10 @@ export class ChannelOpener {
       .create(newAmount.toU8a(), this._props.counterparty)
       .signAndSend(this._props.hoprPolkadot.self, { nonce: await this._props.hoprPolkadot.nonce })
 
-    this.initialised = true
-
     return this
   }
 
   onceOpen(): Promise<ChannelOpener> {
-    this.initialised
-
     const eventIdentifier = Opened(this.channelId)
 
     return new Promise<ChannelOpener>(resolve => {
@@ -81,8 +62,6 @@ export class ChannelOpener {
 
   // @TODO
   async onceFundedByCounterparty(handler?: EventHandler): Promise<void | ChannelOpener> {
-    this.initialised
-
     if (handler == null) {
       return new Promise<ChannelOpener>(async resolve => {
         const unsubscribe = await this._props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, _ => {
@@ -98,8 +77,6 @@ export class ChannelOpener {
   }
 
   async setActive(signature: Signature): Promise<ChannelOpener> {
-    this.initialised
-
     await Promise.all([
       this._props.hoprPolkadot.api.tx.hopr
         .setActive(this._props.counterparty, signature)

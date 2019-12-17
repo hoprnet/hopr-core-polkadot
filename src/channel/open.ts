@@ -1,6 +1,6 @@
 import { Balance, AccountId, Channel as ChannelEnum, Hash } from '../srml_types'
 import { Signature } from '../types'
-import { isPartyA, getId } from '../utils'
+import { getId } from '../utils'
 import { Channel as ChannelKey } from '../db_keys'
 import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
@@ -8,7 +8,6 @@ import HoprPolkadot from '..'
 type ChannelOpenerProps = {
   hoprPolkadot: HoprPolkadot
   counterparty: AccountId
-  amount: Balance
 }
 
 export class ChannelOpener {
@@ -33,17 +32,6 @@ export class ChannelOpener {
 
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
     await this._props.hoprPolkadot.checkFreeBalance(newAmount)
-
-    if (
-      isPartyA(
-        this._props.hoprPolkadot.api.createType('AccountId', this._props.hoprPolkadot.self.publicKey),
-        this._props.counterparty
-      )
-    ) {
-      this._props.amount.iadd(newAmount)
-    } else {
-      this._props.amount.isub(newAmount)
-    }
 
     await this._props.hoprPolkadot.api.tx.hopr
       .create(newAmount.toU8a(), this._props.counterparty)

@@ -9,14 +9,14 @@ export type EventHandler = (event: Event) => void
 type SubscriptionArgs = Map<number, Uint8Array>
 type EventSubscription = {
   args: SubscriptionArgs
-  handlers: EventHandler[]
+  handlers: (EventHandler | undefined)[]
 }
 
-type ArgumentSelector = Map<Uint8Array, EventSubscription[]>
+type ArgumentSelector = Map<string, EventSubscription[]>
 
 type EventRegistry = {
   selectors?: Map<number, ArgumentSelector>
-  handlers?: EventHandler[]
+  handlers?: (EventHandler | undefined)[]
 }
 
 export class EventSignalling {
@@ -25,110 +25,110 @@ export class EventSignalling {
   } = {}
 
   constructor(api: ApiPromise) {
-    api.query.system.events((events: Vec<EventRecord>) =>
+    api.query.system.events((events: Vec<EventRecord>) => {
       events.forEach((record: EventRecord) => this.dispatch(record.event))
-    )
+    })
   }
 
   dispatch(event: Event) {
-    let eventRegistry: EventRegistry = this.registry[`${event.section}:${event.method}`]
+    console.log(`Event ${event.data.section}.${event.data.method}`)
+    let eventRegistry: EventRegistry = this.registry[`${event.data.section}.${event.data.method}`]
 
     if (eventRegistry != null) {
-      eventRegistry.handlers?.forEach((handler: EventHandler) => handler(event))
+      eventRegistry.handlers?.forEach((handler: EventHandler | undefined) => handler != null && handler(event))
 
       eventRegistry.selectors?.forEach((selector: ArgumentSelector, index: number) => {
-        selector.get(event.data[index].toU8a())?.forEach((subscription: EventSubscription) => {
+        // console.log('here', selector, index, event.data[0].toU8a().toString(), selector.get(event.data[index].toU8a().toString()))
+
+        selector.get(event.data[index].toU8a().toString())?.forEach((subscription: EventSubscription) => {
           let ok = true
-          subscription.args?.forEach((value: Uint8Array, key: number) => {
+          subscription.args.forEach((value: Uint8Array, key: number) => {
             ok = ok && event.data[key].eq(value)
           })
-          return ok && subscription.handlers.forEach((handler: EventHandler) => handler(event))
+          return (
+            ok &&
+            subscription.handlers.forEach((handler: EventHandler | undefined) => handler != null && handler(event))
+          )
         })
       })
     }
   }
 
   on(eventSubscription: HoprEventSubscription, handler: EventHandler): () => void {
-    let index = 0
-
     let eventRegistry: EventRegistry = this.registry[eventSubscription.selector] || {}
+    let handlerIndex: number
+    let argumentNumber: number, argumentValue: Uint8Array
 
     if (eventSubscription.args != null) {
       let argsIterator = eventSubscription.args.entries()
-      let [argumentName, argumentValue]: [number, Uint8Array] = argsIterator.next().value
-      eventSubscription.args.delete(argumentName)
+      ;[argumentNumber, argumentValue] = argsIterator.next().value
+      eventSubscription.args.delete(argumentNumber)
 
-      if (eventRegistry.selectors != null) {
-        let argumentSelector: ArgumentSelector | undefined = eventRegistry.selectors.get(argumentName)
+      eventRegistry.selectors = eventRegistry.selectors || new Map<number, ArgumentSelector>()
+      let argumentSelector: ArgumentSelector | undefined = eventRegistry.selectors.get(argumentNumber)
 
-        if (argumentSelector != null) {
-          let subscriptions: EventSubscription[] | undefined = argumentSelector.get(argumentValue)
+      argumentSelector = argumentSelector || new Map<string, EventSubscription[]>()
 
-          if (subscriptions != null) {
-            let index = subscriptions.findIndex((subscription: EventSubscription) =>
-              compareEventSubscriptions(subscription.args, eventSubscription.args)
-            )
-            if (index >= 0) {
-              subscriptions[index].handlers.push(handler)
-            } else {
-              subscriptions.push({
-                args: eventSubscription.args,
-                handlers: [handler]
-              })
-            }
-          } else {
-            subscriptions = [
-              {
-                args: eventSubscription.args,
-                handlers: [handler]
-              }
-            ]
-          }
-          argumentSelector.set(argumentValue, subscriptions)
-        } else {
-          argumentSelector = new Map<Uint8Array, EventSubscription[]>([
-            [
-              argumentValue,
-              [
-                {
-                  args: eventSubscription.args,
-                  handlers: [handler]
-                }
-              ]
-            ]
-          ])
-        }
-        eventRegistry.selectors.set(argumentName, argumentSelector)
+      let subscriptions: EventSubscription[] | undefined = argumentSelector.get(argumentValue.toString())
+
+      subscriptions = subscriptions || []
+
+      let index = subscriptions.findIndex((subscription: EventSubscription) =>
+        compareEventSubscriptions(subscription.args, eventSubscription.args)
+      )
+      if (index >= 0) {
+        handlerIndex = subscriptions[index].handlers.push(handler)
       } else {
-        eventRegistry = {
-          selectors: new Map<number, ArgumentSelector>([
-            [
-              argumentName,
-              new Map<Uint8Array, EventSubscription[]>([
-                [
-                  argumentValue,
-                  [
-                    {
-                      args: eventSubscription.args,
-                      handlers: [handler]
-                    }
-                  ]
-                ]
-              ])
-            ]
-          ])
-        }
+        handlerIndex = subscriptions.push({
+          args: eventSubscription.args,
+          handlers: [handler]
+        })
       }
+
+      argumentSelector.set(argumentValue.toString(), subscriptions)
+
+      eventRegistry.selectors.set(argumentNumber, argumentSelector)
     } else {
-      // @TODO
+      eventRegistry.handlers = eventRegistry.handlers || []
+
+      handlerIndex = eventRegistry.handlers.push(handler)
     }
-    // @TODO
-    // return () => this.registry[str].splice(index, 1)
-    return () => {}
+
+    this.registry[eventSubscription.selector] = eventRegistry
+
+    return () => this.removeHandler(eventSubscription.selector, handlerIndex - 1, argumentNumber, argumentValue)
   }
 
   once(str: HoprEventSubscription, handler: EventHandler) {
     this.on(str, handler)()
+  }
+
+  private removeHandler(
+    sectionMethod: string,
+    handlerIndex: number,
+    argumentNumber?: number,
+    argumentValue?: Uint8Array,
+    subscriptionArgs?: SubscriptionArgs
+  ) {
+    const eventRegistry = this.registry[sectionMethod]
+
+    if (eventRegistry != null) {
+      if (argumentNumber != null && argumentValue != null && subscriptionArgs != null) {
+        eventRegistry.selectors
+          ?.get(argumentNumber)
+          ?.get(argumentValue.toString())
+          ?.find((subscription: EventSubscription) => {
+            let ok = true
+            subscription.args.forEach((arg, index) => {
+              ok = ok && compareArray(subscriptionArgs.get(index) || new Uint8Array([]), arg)
+            })
+            return ok
+          })
+          ?.handlers.splice(handlerIndex, 1, undefined)
+      } else if (eventRegistry.handlers != null) {
+        eventRegistry.handlers.splice(handlerIndex, 1, undefined)
+      }
+    }
   }
 }
 

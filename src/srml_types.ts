@@ -15,155 +15,99 @@ export class Public extends H256 {}
 export class AccountId extends Public implements IAccountId {}
 export class TicketEpoch extends u32 {}
 
-export class ChannelBalance extends Struct {
-  constructor(registry: Registry, value: any) {
-    super(
-      registry,
-      {
-        balance: Balance,
-        balance_a: Balance
-      },
-      value
-    )
-  }
-
-  get balance(): Balance {
-    return this.get('balance') as Balance
-  }
-
-  get balance_a(): Balance {
-    return this.get('balance_a') as Balance
-  }
+export class ChannelBalance extends Struct.with({
+  balance: Balance,
+  balance_a: Balance
+}) {
+  declare balance: Balance
+  declare balance_a: Balance
 }
 
 export class Uninitialized extends Null {
-  toRawType() {
-    return 'Uninitialized'
-  }
+  commonName: string = 'Uninitialized'
 }
 
 export class Funded extends ChannelBalance {
-  toRawType() {
-    return 'Funded'
-  }
+  commonName: string = 'Funded'
 }
 
 export class Active extends ChannelBalance {
-  toRawType() {
-    return 'Active'
-  }
+  commonName: string = 'Active'
 }
 
 export class PendingSettlement extends Tuple.with([ChannelBalance, Moment]) {
-  toRawType() {
-    return 'PendingSettlement'
-  }
+  commonName: string = 'PendingSettlement'
+
+  declare 0: ChannelBalance
+  declare 1: Moment
 }
 
-export class Channel extends Enum {
-  constructor(registry: Registry, value: Uninitialized | Funded | Active | PendingSettlement) {
-    let index
+export class Channel extends Enum.with({
+  uninitialized: Uninitialized,
+  funded: Funded,
+  active: Active,
+  pendingSettlement: PendingSettlement
+}) {
+  declare asUninitialized: Uninitialized
+  declare asFunded: Funded
+  declare asActive: Active
+  declare asPendingSettlement: PendingSettlement
 
-    switch (value.toRawType()) {
-      case 'Uninitialized':
-        index = 0
-        break
-      case 'Funded':
-        index = 1
-        break
-      case 'Active':
-        index = 2
-        break
-      case 'PendingSettlement':
-        index = 3
-        break
+  declare isUninitialized: boolean
+  declare isFunded: boolean
+  declare isActive: boolean
+  declare isPendingSettlement: boolean
+
+  constructor(
+    registry: Registry,
+    value: Uninitialized | Funded | Active | PendingSettlement | Uint8Array,
+  ) {
+    if (value instanceof Uint8Array) {
+      super(registry, value.subarray(1), value.subarray(0, 1)[0])
+      return
     }
 
-    super(
-      registry,
-      {
-        uninitialized: Uninitialized,
-        funded: Funded,
-        active: Active,
-        pendingSettlement: PendingSettlement
-      },
-      value,
-      index
-    )
-  }
-
-  toRawType() {
-    return 'Channel'
-  }
-}
-
-// .with({
-//   Uninitialized,
-//   Funded,
-//   Active,
-//   PendingSettlement
-// }) {}
-
-export class State extends Struct {
-  constructor(registry: Registry, value: any) {
-    super(
-      registry,
-      {
-        epoch: TicketEpoch,
-        secret: Hash,
-        pubkey: Public
-      },
-      value
-    )
-  }
-
-  get secret(): Hash {
-    return this.get('secret') as Hash
-  }
-
-  get pubkey(): Public {
-    return this.get('pubkey') as Public
-  }
-
-  get epoch(): TicketEpoch {
-    return this.get('epoch') as TicketEpoch
+    switch (value.commonName) {
+      case 'Uninitialized':
+        super(registry, value, 0)
+        break
+      case 'Funded':
+        super(registry, value, 1)
+        break
+      case 'Active':
+        super(registry, value, 2)
+        break
+      case 'PendingSettlement':
+        super(registry, value, 3)
+        break
+    }
   }
 }
 
-export class LotteryTicket extends Struct {
-  constructor(registry: Registry, value: any) {
-    super(
-      registry,
-      {
-        channelId: Hash,
-        challenge: Hash,
-        epoch: TicketEpoch,
-        amount: Balance,
-        winProb: Hash
-      },
-      value
-    )
-  }
+export class State extends Struct.with({
+  epoch: TicketEpoch,
+  secret: Hash,
+  pubkey: Public
+}) {
+  declare secret: Hash
+  declare pubkey: Public
+  declare epoch: TicketEpoch
+}
 
-  get channelId(): Hash {
-    return this.get('channelId') as Hash
-  }
-
-  get challenge(): Hash {
-    return this.get('challenge') as Hash
-  }
-
-  get onChainSecret(): Hash {
-    return this.get('onChainSecret') as Hash
-  }
-
-  get amount(): Balance {
-    return this.get('amount') as Balance
-  }
-
-  get winProb(): Hash {
-    return this.get('winProb') as Hash
-  }
+export class LotteryTicket extends Struct.with({
+  channelId: Hash,
+  challenge: Hash,
+  epoch: TicketEpoch,
+  amount: Balance,
+  winProb: Hash,
+  onChainSecret: Hash
+}) {
+  declare channelId: Hash
+  declare challenge: Hash
+  declare epoch: TicketEpoch
+  declare amount: Balance
+  declare winProb: Hash
+  declare onChainSecret: Hash
 }
 
 export const Types = {

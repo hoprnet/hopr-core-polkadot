@@ -2,17 +2,12 @@ import {
   LotteryTicket,
   State,
   Channel as ChannelEnum,
-  Funded,
-  Active,
-  PendingSettlement,
-  ChannelBalance
 } from '../srml_types'
 import { SignedLotteryTicket, Signature } from '../types'
 import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
 import HoprPolkadot from '..'
 import { isPartyA, getId } from '../utils'
 import { Nonce, Channel as ChannelKey } from '../db_keys'
-import { EventSignalling } from '../events'
 import { Moment, Balance, AccountId, Hash } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
@@ -97,11 +92,11 @@ export class Channel {
     return this.channel.then(channel => {
       switch (channel.type) {
         case 'Funded':
-          return ((channel as any).asFunded as Funded).balance_a
+          return channel.asFunded.balance_a
         case 'Active':
-          return ((channel as any).asActive as Active).balance_a
+          return channel.asActive.balance_a
         case 'PendingSettlement':
-          return (((channel as any).asPendingSettlement as PendingSettlement)[0] as ChannelBalance).balance_a
+          return channel.asPendingSettlement[0].balance_a
         default:
           throw Error(`Invalid state. Got '${channel.type}'`)
       }
@@ -112,11 +107,11 @@ export class Channel {
     return this.channel.then(channel => {
       switch (channel.type) {
         case 'Funded':
-          return ((channel as any).asFunded as Funded).balance
+          return channel.asFunded.balance
         case 'Active':
-          return ((channel as any).asActive as Active).balance
+          return channel.asActive.balance
         case 'PendingSettlement':
-          return (((channel as any).asPendingSettlement as PendingSettlement)[0] as ChannelBalance).balance
+          return channel.asPendingSettlement[0].balance
         default:
           throw Error(`Invalid state. Got '${channel.type}'`)
       }
@@ -192,7 +187,7 @@ export class Channel {
 
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
-  async initiateSettlement(eventRegistry: EventSignalling): Promise<ChannelSettler> {
+  async initiateSettlement(): Promise<ChannelSettler> {
     return ChannelSettler.create({
       hoprPolkadot: this.props.hoprPolkadot,
       counterparty: this.props.counterparty,
@@ -204,12 +199,10 @@ export class Channel {
   static async fromDatabase(props: ChannelProps) {
     const channel = new Channel(props)
 
-    let record
-    try {
-      record = await props.hoprPolkadot.db.get(ChannelKey(await channel.channelId))
-    } catch (err) {
-      throw Error(`Cannot find a database entry for channel '${(await channel.channelId).toString()}'`)
-    }
+    const channelId = await channel.channelId 
+    let record = await props.hoprPolkadot.db.get(ChannelKey(channelId)).catch((err) => {
+      throw Error(`Cannot find a database entry for channel '${(channelId).toString()}'`)
+    })
 
     return channel
   }
@@ -218,10 +211,14 @@ export class Channel {
     const channelOpener = await ChannelOpener.create({
       hoprPolkadot: props.hoprPolkadot,
       counterparty: props.counterparty,
-      amount
     })
 
-    await (await (await channelOpener.increaseFunds(amount)).onceOpen()).setActive(await signature)
+    await channelOpener.increaseFunds(amount),
+
+    await Promise.all([
+      channelOpener.onceOpen(),
+      channelOpener.setActive(await signature)
+    ])
 
     const channel = new Channel(props)
 

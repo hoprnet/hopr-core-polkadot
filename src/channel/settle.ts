@@ -25,10 +25,8 @@ export class ChannelSettler {
           return reject(err)
         }
 
-        // @ts-ignore
         if (channel.isPendingSettlement) {
-          // @ts-ignore
-          this._end = ((channel.asPendingSettlement as any) as PendingSettlement)[1]
+          this._end = channel.asPendingSettlement[1]
         } else {
           return reject(`Channel state must be 'PendingSettlement', but is '${channel.type}'`)
         }
@@ -45,8 +43,7 @@ export class ChannelSettler {
   static async create(props: ChannelSettlerProps): Promise<ChannelSettler> {
     let channel = await props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(props.channelId)
 
-    // @ts-ignore
-    if (!(channel.isPendingSettlement && channel.isActive)) {
+    if (!channel.isPendingSettlement && !channel.isActive) {
       throw Error(`Invalid state. Expected channel state to be either 'Active' or 'Pending'. Got '${channel.type}'.`)
     }
 

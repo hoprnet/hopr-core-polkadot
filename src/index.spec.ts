@@ -10,6 +10,7 @@ import { Keyring } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
 
 import { waitForNextBlock, wait, getId } from './utils'
+import { Channel as ChannelEnum } from './srml_types'
 
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
@@ -118,6 +119,8 @@ describe('Hopr Polkadot', async function() {
 
     await waitForNextBlock(hoprAlice.api)
 
+    await hoprAlice.api.tx.balances.transfer(Bob.publicKey, 123).signAndSend(Alice)
+
     console.log(`Alice's new balance '${chalk.green((await hoprAlice.api.query.balances.freeBalance(Alice.publicKey)).toString())}'`)
   })
 
@@ -148,6 +151,7 @@ describe('Hopr Polkadot', async function() {
         )
       )
     )
+    
     console.log(chalk.green('Opening channel'))
     
     const channelOpener = await Channel.open(
@@ -169,7 +173,7 @@ describe('Hopr Polkadot', async function() {
 
     await waitForNextBlock(hoprAlice.api)
 
-    const channel = await hoprAlice.api.query.hopr.channels(channelId)
-    console.log(channel)
+    const channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+    console.log(channel.asActive['balance_a'].toString(), channel.asActive['balance'].toString())
   })
 })

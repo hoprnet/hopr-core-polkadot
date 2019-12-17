@@ -5,7 +5,7 @@
   "author": "Robert Kiel <robert.kiel@validitylabs.org>",
   "license": "LGPL-3.0-only",
   "dependencies": {
-    "@polkadot/api": "^0.98.1",
+    "@polkadot/api": "^0.99.1",
     "@polkadot/util": "^1.7.1",
     "@polkadot/wasm-crypto": "^0.14.1",
     "chalk": "^3.0.0"

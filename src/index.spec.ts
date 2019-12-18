@@ -142,10 +142,12 @@ describe('Hopr Polkadot', async function() {
 
     const channelEnum = createTypeUnsafe<ChannelEnum>(hoprAlice.api.registry, 'Channel', [
       createTypeUnsafe<Funded>(hoprAlice.api.registry, 'Funded', [
-        createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [{
-          balance, 
-          balanceA: balance
-        }])
+        createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [
+          {
+            balance,
+            balanceA: balance
+          }
+        ])
       ])
     ])
 
@@ -170,15 +172,13 @@ describe('Hopr Polkadot', async function() {
 
     await waitForNextBlock(hoprAlice.api)
 
-    const channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
-    console.log(channel.asActive['balance_a'].toString(), channel.asActive['balance'].toString())
+    let channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+    console.log(channel.asActive.toString())
 
-    const now = await hoprAlice.api.query.timestamp.now<Moment>()
-    console.log(now.toString())
-    await Promise.all([
-      channelOpener.initiateSettlement(),
-    ])
+    await channelOpener.initiateSettlement()
     await waitForNextBlock(hoprAlice.api)
-    console.log((await hoprAlice.api.query.timestamp.now<Moment>()).toString())
+
+    channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+    console.log(`Channel '${channel.toString()}`)
   })
 })

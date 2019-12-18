@@ -32,7 +32,7 @@ export function waitForNextBlock(api: ApiPromise): Promise<void> {
 export function waitUntil(
   api: ApiPromise,
   forWhat: string,
-  until?: (api: ApiPromise, timestamp?: Moment) => Promise<boolean>,
+  until?: (api: ApiPromise, timestamp?: Moment) => boolean,
   maxBlocks?: number
 ): Promise<void> {
   return new Promise<void>(async (resolve, reject) => {
@@ -41,18 +41,19 @@ export function waitUntil(
     const unsub = await api.query.timestamp.now<Moment>(async (timestamp: Moment) => {
       if (timestamp.gt(currentBlock)) {
         i++
-        if (until == null || (await until(api, timestamp)) == true || (maxBlocks != null && i >= maxBlocks)) {
+
+        console.log(`Waiting for ${chalk.green(forWhat)} ... current timestamp ${chalk.green(timestamp.toString())}`)
+
+        if (until == null || until(api, timestamp) == true || (maxBlocks != null && i >= maxBlocks)) {
           setImmediate(() => {
             console.log(`waiting done for ${chalk.green(forWhat)}`)
             unsub()
-            if (until != null && maxBlocks != null && i>= maxBlocks) {
+            if (until != null && maxBlocks != null && i >= maxBlocks) {
               reject()
             } else {
               resolve()
             }
           })
-        } else {
-          console.log(`Waiting for ${chalk.green(forWhat)} ... current timestamp ${chalk.green(timestamp.toString())}`)
         }
       }
     })

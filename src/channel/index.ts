@@ -185,7 +185,7 @@ export class Channel {
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
   async initiateSettlement(): Promise<void> {
-    let channelSettler
+    let channelSettler: ChannelSettler
     
     try {
       channelSettler = await ChannelSettler.create({
@@ -199,7 +199,7 @@ export class Channel {
     }
     
     await Promise.all([
-      channelSettler.onceClosed(),
+      channelSettler.onceClosed().then(() => channelSettler.withdraw()),
       channelSettler.init()
     ])
   }

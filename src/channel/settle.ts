@@ -2,8 +2,6 @@ import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } fr
 import { PushedBackSettlement } from '../events'
 import { Event } from '@polkadot/types/interfaces'
 import HoprPolkadot from '..'
-import { waitUntil } from '../utils'
-import { ApiPromise } from '@polkadot/api'
 
 type ChannelSettlerProps = {
   hoprPolkadot: HoprPolkadot
@@ -33,7 +31,24 @@ export class ChannelSettler {
       if (channel.isPendingSettlement) {
         this._end = channel.asPendingSettlement[1]
       } else {
-        return reject(`Channel state must be '${PendingSettlement.name}', but is '${channel.type}'`)
+        try {
+          await new Promise(async (resolve, reject) => {
+            const unsub = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
+              this.props.channelId,
+              (channel: ChannelEnum) => {
+                console.log(`channel has changed. ${channel.toString()}`)
+                if (channel.isPendingSettlement) {
+                  setImmediate(() => {
+                    unsub()
+                    resolve()
+                  })
+                }
+              }
+            )
+          })
+        } catch (err) {
+          return reject(`Channel state must be '${PendingSettlement.name}', but is '${channel.type}'`)
+        }
       }
 
       return resolve(this._end)
@@ -55,30 +70,9 @@ export class ChannelSettler {
   }
 
   async init(): Promise<ChannelSettler> {
-    let now: Moment = await this.props.hoprPolkadot.api.query.timestamp.now<Moment>()
-
-    await this.props.hoprPolkadot.api.tx.hopr
+    this.props.hoprPolkadot.api.tx.hopr
       .initiateSettlement(this.props.counterparty)
       .signAndSend(this.props.hoprPolkadot.self, { nonce: await this.props.hoprPolkadot.nonce })
-
-    const channelId = this.props.channelId
-
-    const MAX_WAITING_TIME = 5 // blocks
-
-    await waitUntil(
-      this.props.hoprPolkadot.api,
-      'pendingSettlement',
-      (async (api: ApiPromise) => {
-        const channel = await api.query.hopr.channels<ChannelEnum>(channelId)
-
-        if (channel.isPendingSettlement) {
-          this._end = channel.asPendingSettlement[1]
-          return true
-        }
-
-        return false
-      }).bind(this), MAX_WAITING_TIME
-    )
 
     const unsubscribe = this.props.hoprPolkadot.eventSubscriptions.on(
       PushedBackSettlement(this.props.channelId),
@@ -86,8 +80,6 @@ export class ChannelSettler {
         this._end = event.data[0] as Moment
       }
     )
-
-    this._end = this.props.hoprPolkadot.api.createType('Moment', now.iadd(this.props.settlementWindow))
 
     unsubscribe()
     return this
@@ -123,11 +115,24 @@ export class ChannelSettler {
     })
   }
 
-  private async timeoutFactory() {
-    return this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
-      if (moment.gt(await this.end)) {
-        this.handlers.forEach(handler => handler != null && handler())
-      }
+  async withdraw(): Promise<void> {
+    await this.props.hoprPolkadot.api.tx.hopr
+      .withdraw(this.props.counterparty)
+      .signAndSend(this.props.hoprPolkadot.self, { nonce: await this.props.hoprPolkadot.nonce })
+
+    console.log('withdrawn')
+  }
+
+  private timeoutFactory(): Promise<() => void> {
+    return new Promise<() => void>(async (resolve, reject) => {
+      let end = await this.end
+      resolve(
+        this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
+          if (moment.gt(await this.end)) {
+            this.handlers.forEach(handler => handler != null && handler())
+          }
+        })
+      )
     })
   }
 

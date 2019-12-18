@@ -1,8 +1,4 @@
-import {
-  LotteryTicket,
-  State,
-  Channel as ChannelEnum,
-} from '../srml_types'
+import { LotteryTicket, State, Channel as ChannelEnum } from '../srml_types'
 import { SignedLotteryTicket, Signature } from '../types'
 import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
 import HoprPolkadot from '..'
@@ -11,6 +7,7 @@ import { Nonce, Channel as ChannelKey } from '../db_keys'
 import { Moment, Balance, AccountId, Hash } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
+import { createTypeUnsafe } from '@polkadot/types'
 export * from './settle'
 export * from './open'
 
@@ -55,8 +52,8 @@ export class Channel {
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        this._channel = this.props.hoprPolkadot.api.createType(
-          // @ts-ignore
+        this._channel = createTypeUnsafe<ChannelEnum>(
+          this.props.hoprPolkadot.api.registry,
           'Channel',
           await this.props.hoprPolkadot.db.get(ChannelKey(await this.channelId))
         )
@@ -75,7 +72,7 @@ export class Channel {
 
     return new Promise<Moment>(async (resolve, reject) => {
       try {
-        this._settlementWindow = this.props.hoprPolkadot.api.consts.hopr.pendingWindow as Moment
+        this._settlementWindow = await this.props.hoprPolkadot.api.query.hopr.pendingWindow<Moment>()
       } catch (err) {
         return reject(err)
       }
@@ -187,21 +184,32 @@ export class Channel {
 
   async submitTicket(signedTicket: SignedLotteryTicket) {}
 
-  async initiateSettlement(): Promise<ChannelSettler> {
-    return ChannelSettler.create({
-      hoprPolkadot: this.props.hoprPolkadot,
-      counterparty: this.props.counterparty,
-      channelId: await this.channelId,
-      settlementWindow: await this.settlementWindow
-    })
+  async initiateSettlement(): Promise<void> {
+    let channelSettler
+    
+    try {
+      channelSettler = await ChannelSettler.create({
+        hoprPolkadot: this.props.hoprPolkadot,
+        counterparty: this.props.counterparty,
+        channelId: await this.channelId,
+        settlementWindow: await this.settlementWindow
+      })
+    } catch (err) {
+      throw err
+    }
+    
+    await Promise.all([
+      channelSettler.onceClosed(),
+      channelSettler.init()
+    ])
   }
 
   static async fromDatabase(props: ChannelProps) {
     const channel = new Channel(props)
 
-    const channelId = await channel.channelId 
-    let record = await props.hoprPolkadot.db.get(ChannelKey(channelId)).catch((err) => {
-      throw Error(`Cannot find a database entry for channel '${(channelId).toString()}'`)
+    const channelId = await channel.channelId
+    let record = await props.hoprPolkadot.db.get(ChannelKey(channelId)).catch(err => {
+      throw Error(`Cannot find a database entry for channel '${channelId.toString()}'`)
     })
 
     return channel
@@ -210,12 +218,12 @@ export class Channel {
   static async open(props: ChannelProps, amount: Balance, signature: Promise<Signature>) {
     const channelOpener = await ChannelOpener.create({
       hoprPolkadot: props.hoprPolkadot,
-      counterparty: props.counterparty,
+      counterparty: props.counterparty
     })
 
-    await channelOpener.increaseFunds(amount),
-
+    await channelOpener.increaseFunds(amount)
     await Promise.all([
+      /* prettier-ignore */
       channelOpener.onceOpen(),
       channelOpener.setActive(await signature)
     ])

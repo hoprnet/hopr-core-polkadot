@@ -1,7 +1,9 @@
-import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId } from '../srml_types'
+import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } from '../srml_types'
 import { PushedBackSettlement } from '../events'
-import { Event, Moment } from '@polkadot/types/interfaces'
+import { Event } from '@polkadot/types/interfaces'
 import HoprPolkadot from '..'
+import { waitUntil } from '../utils'
+import { ApiPromise } from '@polkadot/api'
 
 type ChannelSettlerProps = {
   hoprPolkadot: HoprPolkadot
@@ -13,41 +15,43 @@ type ChannelSettlerProps = {
 export class ChannelSettler {
   private _end?: Moment
 
-  timer?: any
+  timer?: () => void
 
   get end(): Promise<Moment> {
-    return new Promise<Moment>(async (resolve, reject) => {
-      if (this._end == null) {
-        let channel
-        try {
-          channel = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.props.channelId)
-        } catch (err) {
-          return reject(err)
-        }
+    if (this._end) {
+      return Promise.resolve<Moment>(this._end)
+    }
 
-        if (channel.isPendingSettlement) {
-          this._end = channel.asPendingSettlement[1]
-        } else {
-          return reject(`Channel state must be 'PendingSettlement', but is '${channel.type}'`)
-        }
+    return new Promise<Moment>(async (resolve, reject) => {
+      let channel
+      try {
+        channel = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.props.channelId)
+      } catch (err) {
+        return reject(err)
+      }
+
+      if (channel.isPendingSettlement) {
+        this._end = channel.asPendingSettlement[1]
+      } else {
+        return reject(`Channel state must be '${PendingSettlement.name}', but is '${channel.type}'`)
       }
 
       return resolve(this._end)
     })
   }
 
-  private handlers: Function[] = []
+  private handlers: (Function | undefined)[] = []
 
   private constructor(private props: ChannelSettlerProps) {}
 
   static async create(props: ChannelSettlerProps): Promise<ChannelSettler> {
     let channel = await props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(props.channelId)
 
-    if (!channel.isPendingSettlement && !channel.isActive) {
+    if (!(channel.isPendingSettlement || channel.isActive)) {
       throw Error(`Invalid state. Expected channel state to be either 'Active' or 'Pending'. Got '${channel.type}'.`)
     }
 
-    return new ChannelSettler(props).init()
+    return new ChannelSettler(props)
   }
 
   async init(): Promise<ChannelSettler> {
@@ -57,13 +61,35 @@ export class ChannelSettler {
       .initiateSettlement(this.props.counterparty)
       .signAndSend(this.props.hoprPolkadot.self, { nonce: await this.props.hoprPolkadot.nonce })
 
-    this.props.hoprPolkadot.eventSubscriptions.on(PushedBackSettlement(this.props.channelId), (event: Event) => {
-      this._end = event.data[0] as Moment
-    })
+    const channelId = this.props.channelId
 
-    this._end = this.props.hoprPolkadot.api.createType('u64', now.iadd(this.props.settlementWindow))
+    const MAX_WAITING_TIME = 5 // blocks
 
-    this.timer = await this.timeoutFactory()
+    await waitUntil(
+      this.props.hoprPolkadot.api,
+      'pendingSettlement',
+      (async (api: ApiPromise) => {
+        const channel = await api.query.hopr.channels<ChannelEnum>(channelId)
+
+        if (channel.isPendingSettlement) {
+          this._end = channel.asPendingSettlement[1]
+          return true
+        }
+
+        return false
+      }).bind(this), MAX_WAITING_TIME
+    )
+
+    const unsubscribe = this.props.hoprPolkadot.eventSubscriptions.on(
+      PushedBackSettlement(this.props.channelId),
+      (event: Event) => {
+        this._end = event.data[0] as Moment
+      }
+    )
+
+    this._end = this.props.hoprPolkadot.api.createType('Moment', now.iadd(this.props.settlementWindow))
+
+    unsubscribe()
     return this
   }
 
@@ -83,22 +109,34 @@ export class ChannelSettler {
   //   })
   // }
 
-  onceClosed(): void | Promise<ChannelSettler> {
-    return new Promise(resolve => {
+  async onceClosed(): Promise<void> {
+    if (this.timer == null) {
+      this.timer = await this.timeoutFactory()
+    }
+
+    return new Promise<void>(resolve => {
       let index = this.handlers.push(() => {
-        this.handlers.splice(index - 1, 1)
+        this.handlers.splice(index - 1, 1, undefined)
+        this.cleanHandlers()
         return resolve()
       })
     })
   }
 
   private async timeoutFactory() {
-    const unsub = await this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async moment => {
+    return this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
       if (moment.gt(await this.end)) {
-        this.handlers.forEach(handler => handler())
+        this.handlers.forEach(handler => handler != null && handler())
       }
-      unsub()
-      return
     })
+  }
+
+  private cleanHandlers() {
+    while (this.handlers.length > 0 && this.handlers[this.handlers.length - 1] === undefined) {
+      this.handlers.pop()
+    }
+    if (this.handlers.length == 0 && this.timer != null) {
+      this.timer()
+    }
   }
 }

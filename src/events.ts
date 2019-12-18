@@ -31,7 +31,7 @@ export class EventSignalling {
   }
 
   dispatch(event: Event) {
-    console.log(`Event ${event.data.section}.${event.data.method}`)
+    console.log(`Event ${event.data.section}.${event.data.method} - ${event.data.meta.documentation}`)
     let eventRegistry: EventRegistry = this.registry[`${event.data.section}.${event.data.method}`]
 
     if (eventRegistry != null) {

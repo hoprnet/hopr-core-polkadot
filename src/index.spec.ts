@@ -8,9 +8,10 @@ import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { Channel } from './channel'
 import { Keyring } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
+import { createTypeUnsafe } from '@polkadot/types'
 
 import { waitForNextBlock, wait, getId } from './utils'
-import { Channel as ChannelEnum } from './srml_types'
+import { Channel as ChannelEnum, Funded, ChannelBalance, Moment } from './srml_types'
 
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
@@ -121,7 +122,11 @@ describe('Hopr Polkadot', async function() {
 
     await hoprAlice.api.tx.balances.transfer(Bob.publicKey, 123).signAndSend(Alice)
 
-    console.log(`Alice's new balance '${chalk.green((await hoprAlice.api.query.balances.freeBalance(Alice.publicKey)).toString())}'`)
+    console.log(
+      `Alice's new balance '${chalk.green(
+        (await hoprAlice.api.query.balances.freeBalance(Alice.publicKey)).toString()
+      )}'`
+    )
   })
 
   afterEach(() => {
@@ -135,25 +140,17 @@ describe('Hopr Polkadot', async function() {
 
     const balance = hoprAlice.api.createType('Balance', 12345)
 
-    const channelEnum = hoprAlice.api.createType(
-      // @ts-ignore
-      'Channel',
-      hoprAlice.api.createType(
-        // @ts-ignore
-        'Funded',
-        hoprAlice.api.createType(
-          // @ts-ignore
-          'ChannelBalance',
-          {
-            balance,
-            balanceA: balance
-          }
-        )
-      )
-    )
-    
+    const channelEnum = createTypeUnsafe<ChannelEnum>(hoprAlice.api.registry, 'Channel', [
+      createTypeUnsafe<Funded>(hoprAlice.api.registry, 'Funded', [
+        createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [{
+          balance, 
+          balanceA: balance
+        }])
+      ])
+    ])
+
     console.log(chalk.green('Opening channel'))
-    
+
     const channelOpener = await Channel.open(
       {
         hoprPolkadot: hoprAlice,
@@ -175,5 +172,13 @@ describe('Hopr Polkadot', async function() {
 
     const channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
     console.log(channel.asActive['balance_a'].toString(), channel.asActive['balance'].toString())
+
+    const now = await hoprAlice.api.query.timestamp.now<Moment>()
+    console.log(now.toString())
+    await Promise.all([
+      channelOpener.initiateSettlement(),
+    ])
+    await waitForNextBlock(hoprAlice.api)
+    console.log((await hoprAlice.api.query.timestamp.now<Moment>()).toString())
   })
 })

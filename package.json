@@ -4,20 +4,21 @@
   "repository": "git@github.com:hoprnet/hopr-core-polkadot.git",
   "author": "Robert Kiel <robert.kiel@validitylabs.org>",
   "license": "LGPL-3.0-only",
-  "dependencies": {
-    "@polkadot/api": "^0.99.1",
-    "@polkadot/util": "^1.7.1",
-    "@polkadot/wasm-crypto": "^0.14.1",
-    "chalk": "^3.0.0"
-  },
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "scripts": {
     "build": "tsc -d -p .",
-    "test": "ts-mocha -p ./tsconfig.json src/**/*.spec.ts"
+    "test": "npx mocha"
   },
   "engines": {
-    "yarn": "1.19.2"
+    "yarn": "1.19.2",
+    "node": "^11 || ^12"
+  },
+  "dependencies": {
+    "@polkadot/api": "^0.99.1",
+    "@polkadot/util": "^1.7.1",
+    "@polkadot/wasm-crypto": "^0.14.1",
+    "chalk": "^3.0.0",
   },
   "devDependencies": {
     "@types/levelup": "^4.3.0",

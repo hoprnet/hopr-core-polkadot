@@ -10,8 +10,9 @@ import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
-const ON_CHAIN_SECRET_HASH_KEY: Uint8Array = Uint8Array.from(new TextEncoder().encode('ChannelId'))
 const HASH_LENGTH = 32 // bytes
+
+export * from './channel'
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -25,7 +26,7 @@ export default class HoprPolkadot {
 
   eventSubscriptions: EventSignalling
 
-  constructor(private _props: HoprPolkadotProps) {
+  private constructor(private _props: HoprPolkadotProps) {
     this.eventSubscriptions = new EventSignalling(this._props.api)
   }
 
@@ -97,7 +98,7 @@ export default class HoprPolkadot {
     this.started = true
   }
 
-  async initOnchainValues(nonce?: number) {
+  async initOnchainValues(nonce?: number): Promise<void> {
     this.started
 
     let secret = new Uint8Array(randomBytes(32))
@@ -109,7 +110,7 @@ export default class HoprPolkadot {
     ])
 
     for (let i = 0; i < 1000; i++) {
-      secret = blake2b(secret, ON_CHAIN_SECRET_HASH_KEY, HASH_LENGTH)
+      secret = blake2b(secret, new Uint8Array(), HASH_LENGTH)
     }
 
     await this._props.api.tx.hopr

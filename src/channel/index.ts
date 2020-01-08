@@ -8,8 +8,6 @@ import { Moment, Balance, AccountId, Hash } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
-export * from './settle'
-export * from './open'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 

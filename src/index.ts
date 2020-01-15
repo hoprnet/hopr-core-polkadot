@@ -10,7 +10,7 @@ import * as Utils from './utils'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
-import { Channel } from './channel'
+import { Channel as _Channel } from './channel'
 
 import HoprCoreConnector from '@hoprnet/hopr-core-connector-interface'
 
@@ -20,17 +20,18 @@ export type HoprPolkadotProps = {
   db: LevelUp
 }
 
-export default class HoprPolkadot implements HoprCoreConnector {
+export default class HoprPolkadot extends HoprCoreConnector {
   private _started: boolean = false
   private _nonce?: number
 
   static readonly utils = Utils
   static readonly types = Types
-  static readonly channel = Channel
+  static readonly Channel = _Channel
 
   eventSubscriptions: EventSignalling
 
   private constructor(private _props: HoprPolkadotProps) {
+    super()
     this.eventSubscriptions = new EventSignalling(this._props.api)
   }
 
@@ -79,7 +80,7 @@ export default class HoprPolkadot implements HoprCoreConnector {
    *
    * @param db database instance
    */
-  static async create(db: LevelUp, keyPair: KeyringPair, uri: string = POLKADOT_URI): Promise<HoprPolkadot> {
+  static async create(db: LevelUp, keyPair: KeyringPair, uri: string = POLKADOT_URI): Promise<any> {
     const api = await ApiPromise.create({
       provider: new WsProvider(uri),
       types: SRMLTypes

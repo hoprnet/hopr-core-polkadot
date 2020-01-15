@@ -163,7 +163,7 @@ export class Channel {
     }
 
     try {
-      await this.testAndSetNonce(signedTicket)
+      await this.testAndSetNonce(signedTicket.toU8a())
     } catch (_) {
       return false
     }

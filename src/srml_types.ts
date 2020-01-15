@@ -1,6 +1,7 @@
 import { Null, u32, u64, u128, H256 } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
+import { u8aConcat } from '@polkadot/util'
 
 export class Balance extends u128 {}
 export class Moment extends u64 {}
@@ -105,13 +106,11 @@ export class Channel extends Enum.with({
 
 export class Signature extends Uint8Array {}
 
-export class SignedTicket extends Uint8Array {
-  constructor(public ticket: Ticket, public signature: Uint8Array) {
-    super()
-  }
+export class SignedTicket {
+  constructor(public ticket: Ticket, public signature: Uint8Array) {}
 
-  subarray(begin?: number, end?: number): Uint8Array {
-    return Uint8Array.from(this).subarray(begin, end)
+  toU8a(): Uint8Array {
+    return u8aConcat(this.ticket.toU8a(), this.signature)
   }
 }
 
@@ -142,18 +141,17 @@ export class Ticket extends Struct.with({
 }
 
 const SRMLTypes = {
-  AccountId: AccountId,
-  Balance: Balance,
-  Moment: Moment,
-  Hash: Hash,
-  Public: Public,
-  ChannelBalance: ChannelBalance,
-  Channel: Channel,
-  Funded: Funded,
-  ChannelId: Hash,
-  PreImage: Hash,
-  State: State,
-  Ticket: Ticket
+  AccountId,
+  Balance,
+  Moment,
+  Hash,
+  Public,
+  ChannelBalance,
+  Channel,
+  Funded,
+  State,
+  Ticket,
+  TicketEpoch
 }
 
 const Types = {

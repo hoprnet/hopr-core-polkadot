@@ -1,18 +1,12 @@
 import { Null, u32, u64, u128, H256 } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
-import {
-  Moment as IMoment,
-  Balance as IBalance,
-  Hash as IHash,
-  AccountId as IAccountId
-} from '@polkadot/types/interfaces'
 
-export class Balance extends u128 implements IBalance {}
-export class Moment extends u64 implements IMoment {}
-export class Hash extends H256 implements IHash {}
+export class Balance extends u128 {}
+export class Moment extends u64 {}
+export class Hash extends H256 {}
 export class Public extends H256 {}
-export class AccountId extends Public implements IAccountId {}
+export class AccountId extends Public {}
 export class TicketEpoch extends u32 {}
 
 export class ChannelBalance extends Struct.with({
@@ -109,6 +103,18 @@ export class Channel extends Enum.with({
   }
 }
 
+export class Signature extends Uint8Array {}
+
+export class SignedTicket extends Uint8Array {
+  constructor(public ticket: Ticket, public signature: Uint8Array) {
+    super()
+  }
+
+  subarray(begin?: number, end?: number): Uint8Array {
+    return Uint8Array.from(this).subarray(begin, end)
+  }
+}
+
 export class State extends Struct.with({
   epoch: TicketEpoch,
   secret: Hash,
@@ -119,7 +125,7 @@ export class State extends Struct.with({
   declare epoch: TicketEpoch
 }
 
-export class LotteryTicket extends Struct.with({
+export class Ticket extends Struct.with({
   channelId: Hash,
   challenge: Hash,
   epoch: TicketEpoch,
@@ -135,7 +141,8 @@ export class LotteryTicket extends Struct.with({
   declare onChainSecret: Hash
 }
 
-export const Types = {
+const SRMLTypes = {
+  AccountId: AccountId,
   Balance: Balance,
   Moment: Moment,
   Hash: Hash,
@@ -146,5 +153,12 @@ export const Types = {
   ChannelId: Hash,
   PreImage: Hash,
   State: State,
-  LotteryTicket: LotteryTicket
+  Ticket: Ticket
 }
+
+const Types = {
+  SignedTicket: SignedTicket,
+  ...SRMLTypes
+}
+
+export { SRMLTypes, Types }

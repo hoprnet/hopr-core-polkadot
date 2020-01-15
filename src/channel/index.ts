@@ -1,13 +1,12 @@
-import { LotteryTicket, State, Channel as ChannelEnum } from '../srml_types'
-import { SignedLotteryTicket, Signature } from '../types'
+import { Ticket, State, Channel as ChannelEnum, SignedTicket, Signature } from '../srml_types'
 import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
 import HoprPolkadot from '..'
-import { isPartyA, getId } from '../utils'
 import { Nonce, Channel as ChannelKey } from '../db_keys'
 import { Moment, Balance, AccountId, Hash } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
+import { getId, isPartyA } from '../utils'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
@@ -31,9 +30,9 @@ export class Channel {
     return new Promise(async (resolve, reject) => {
       try {
         this._channelId = await getId(
-          this.props.hoprPolkadot.api,
           this.props.hoprPolkadot.api.createType('AccountId', this.props.hoprPolkadot.self.publicKey),
-          this.props.counterparty
+          this.props.counterparty,
+          this.props.hoprPolkadot.api
         )
       } catch (err) {
         return reject(err)
@@ -142,15 +141,10 @@ export class Channel {
     })
   }
 
-  async createTicket(
-    secretKey: Uint8Array,
-    amount: Balance,
-    challenge: Hash,
-    winProb: Hash
-  ): Promise<SignedLotteryTicket> {
+  async createTicket(secretKey: Uint8Array, amount: Balance, challenge: Hash, winProb: Hash): Promise<SignedTicket> {
     const { epoch } = await this.props.hoprPolkadot.api.query.hopr.state<State>(this.props.counterparty)
 
-    const ticket = new LotteryTicket(this.props.hoprPolkadot.api.registry, {
+    const ticket = new Ticket(this.props.hoprPolkadot.api.registry, {
       channelId: await this.channelId,
       epoch,
       challenge,
@@ -160,31 +154,28 @@ export class Channel {
 
     const signature = sr25519Sign(this.props.hoprPolkadot.self.publicKey, secretKey, ticket.toU8a())
 
-    return {
-      lotteryTicket: ticket,
-      signature
-    }
+    return new SignedTicket(ticket, signature)
   }
 
-  async verifyTicket(signedTicket: SignedLotteryTicket): Promise<boolean> {
-    if ((await this.currentBalanceOfCounterparty).add(signedTicket.lotteryTicket.amount).gt(await this.balance)) {
+  async verifyTicket(signedTicket: SignedTicket): Promise<boolean> {
+    if ((await this.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await this.balance)) {
       return false
     }
 
     try {
-      await this.testAndSetNonce(signedTicket.signature)
+      await this.testAndSetNonce(signedTicket)
     } catch (_) {
       return false
     }
 
-    return sr25519Verify(signedTicket.signature, signedTicket.lotteryTicket.toU8a(), this.props.counterparty.toU8a())
+    return sr25519Verify(signedTicket.signature, signedTicket.ticket.toU8a(), this.props.counterparty.toU8a())
   }
 
-  async submitTicket(signedTicket: SignedLotteryTicket) {}
+  async submitTicket(signedTicket: SignedTicket) {}
 
   async initiateSettlement(): Promise<void> {
     let channelSettler: ChannelSettler
-    
+
     try {
       channelSettler = await ChannelSettler.create({
         hoprPolkadot: this.props.hoprPolkadot,
@@ -195,11 +186,8 @@ export class Channel {
     } catch (err) {
       throw err
     }
-    
-    await Promise.all([
-      channelSettler.onceClosed().then(() => channelSettler.withdraw()),
-      channelSettler.init()
-    ])
+
+    await Promise.all([channelSettler.onceClosed().then(() => channelSettler.withdraw()), channelSettler.init()])
   }
 
   static async fromDatabase(props: ChannelProps) {

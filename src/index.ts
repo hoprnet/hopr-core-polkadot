@@ -2,17 +2,17 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, Balance } from './srml_types'
+import { Types, SRMLTypes, Balance } from './srml_types'
 import { OnChainSecret } from './db_keys'
-import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { randomBytes } from 'crypto'
-import { blake2b, waitReady } from '@polkadot/wasm-crypto'
+import { waitReady } from '@polkadot/wasm-crypto'
+import * as Utils from './utils'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
-const HASH_LENGTH = 32 // bytes
+import { Channel } from './channel'
 
-export * from './channel'
+import HoprCoreConnector from '@hoprnet/hopr-core-connector-interface'
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -20,9 +20,13 @@ export type HoprPolkadotProps = {
   db: LevelUp
 }
 
-export default class HoprPolkadot {
+export default class HoprPolkadot implements HoprCoreConnector {
   private _started: boolean = false
   private _nonce?: number
+
+  static readonly utils = Utils
+  static readonly types = Types
+  static readonly channel = Channel
 
   eventSubscriptions: EventSignalling
 
@@ -30,7 +34,7 @@ export default class HoprPolkadot {
     this.eventSubscriptions = new EventSignalling(this._props.api)
   }
 
-  private get started(): boolean {
+  get started(): boolean {
     if (!this._started) {
       throw Error('Module is not yet fully initialised.')
     }
@@ -38,7 +42,7 @@ export default class HoprPolkadot {
     return this._started
   }
 
-  private set started(started: boolean) {
+  set started(started: boolean) {
     this._started = started
   }
 
@@ -78,7 +82,7 @@ export default class HoprPolkadot {
   static async create(db: LevelUp, keyPair: KeyringPair, uri: string = POLKADOT_URI): Promise<HoprPolkadot> {
     const api = await ApiPromise.create({
       provider: new WsProvider(uri),
-      types: Types
+      types: SRMLTypes
     })
 
     return new HoprPolkadot({
@@ -91,8 +95,7 @@ export default class HoprPolkadot {
   async start(): Promise<void> {
     await Promise.all([
       // prettier-ignore
-      this._props.api.isReady,
-      cryptoWaitReady()
+      this._props.api.isReady
     ])
 
     this.started = true
@@ -110,12 +113,12 @@ export default class HoprPolkadot {
     ])
 
     for (let i = 0; i < 1000; i++) {
-      secret = blake2b(secret, new Uint8Array(), HASH_LENGTH)
+      secret = await HoprPolkadot.utils.hash(secret)
     }
 
     await this._props.api.tx.hopr
       .init(this._props.api.createType('Hash', this._props.self.publicKey), secret)
-      .signAndSend(this._props.self, { nonce: nonce || await this.nonce })
+      .signAndSend(this._props.self, { nonce: nonce || (await this.nonce) })
   }
 
   async checkFreeBalance(newBalance: Balance): Promise<void> {

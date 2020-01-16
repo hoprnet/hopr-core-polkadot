@@ -34,7 +34,7 @@
     "typescript": "^3.7.4"
   },
   "files": [
-    "src/"
+    "lib/"
   ],
   "prettier": {
     "tabWidth": 2,

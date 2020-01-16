@@ -12,7 +12,7 @@ const POLKADOT_URI: string = 'ws://localhost:9944'
 
 import { Channel as _Channel } from './channel'
 
-import HoprCoreConnector from '@hoprnet/hopr-core-connector-interface'
+import { HoprCoreConnectorClass } from '@hoprnet/hopr-core-connector-interface'
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -20,7 +20,7 @@ export type HoprPolkadotProps = {
   db: LevelUp
 }
 
-export default class HoprPolkadot extends HoprCoreConnector {
+export default class HoprPolkadot extends HoprCoreConnectorClass {
   private _started: boolean = false
   private _nonce?: number
 

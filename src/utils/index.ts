@@ -1,7 +1,7 @@
 import { AccountId, Hash, Moment } from '../srml_types'
 import { ApiPromise } from '@polkadot/api'
 import { u8aConcat } from '@polkadot/util'
-import { blake2b, waitReady } from '@polkadot/wasm-crypto'
+import { sr25519Sign, sr25519Verify, blake2b, waitReady } from '@polkadot/wasm-crypto'
 import chalk from 'chalk'
 
 // const ID_HASH_KEY: Uint8Array = Uint8Array.from(new TextEncoder().encode('ChannelId'))
@@ -113,4 +113,26 @@ export function waitUntil(
  */
 export function wait(miliseconds: number): Promise<void> {
   return new Promise<void>(resolve => setTimeout(resolve, miliseconds))
+}
+
+/**
+ * Signs a message by using the native signature scheme.
+ * @param msg message to sign
+ * @param privKey private key
+ * @param pubKey public key
+ */
+export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Array): Promise<Uint8Array> {
+  await waitReady()
+  return sr25519Sign(pubKey, privKey, msg)
+}
+
+/**
+ * Verifies a signature by using the native signature algorithm.
+ * @param msg message that has been signed
+ * @param signature signature to verify
+ * @param pubKey public key of the signer
+ */
+export async function verify(msg: Uint8Array, signature: Uint8Array, pubKey: Uint8Array) {
+  await waitReady()
+  return sr25519Verify(signature, msg, pubKey)
 }

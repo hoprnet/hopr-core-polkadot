@@ -1,4 +1,4 @@
-import HoprPolkadot from '.'
+import HoprPolkadot, { HoprPolkadotClass } from '.'
 
 import { spawn, ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
@@ -10,7 +10,7 @@ import { KeyringPair } from '@polkadot/keyring/types'
 import { createTypeUnsafe } from '@polkadot/types'
 
 import { Channel as ChannelEnum, Funded, ChannelBalance, Moment } from './srml_types'
-import { Channel } from './channel'
+import Channel from './channel'
 
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
@@ -33,7 +33,7 @@ describe('Hopr Polkadot', async function() {
 
   let polkadotNode: ChildProcess
 
-  let hoprAlice: HoprPolkadot, hoprBob: HoprPolkadot
+  let hoprAlice: HoprPolkadotClass, hoprBob: HoprPolkadotClass
 
   before(async function() {
     this.timeout(TWENTY_MINUTES)
@@ -153,12 +153,12 @@ describe('Hopr Polkadot', async function() {
     console.log(chalk.green('Opening channel'))
 
     const channelOpener = await Channel.open(
+      balance,
+      Promise.resolve(Bob.sign(channelEnum.toU8a())),
       {
         hoprPolkadot: hoprAlice,
         counterparty: hoprAlice.api.createType('AccountId', Bob.publicKey)
-      },
-      balance,
-      Promise.resolve(Bob.sign(channelEnum.toU8a()))
+      }
     )
 
     console.log('channel opened')

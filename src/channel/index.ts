@@ -1,26 +1,30 @@
-import { Ticket, State, Channel as ChannelEnum, SignedTicket, Signature } from '../srml_types'
+import { Ticket, State, Channel as ChannelEnum, SignedTicket, Signature, Balance } from '../srml_types'
 import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
-import HoprPolkadot from '..'
 import { Nonce, Channel as ChannelKey } from '../db_keys'
-import { Moment, Balance, AccountId, Hash } from '@polkadot/types/interfaces'
+import { Moment, AccountId, Hash } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
 import { getId, isPartyA } from '../utils'
 
+import HoprPolkadot, { HoprPolkadotClass } from '..'
+
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
+import HoprCoreConnector, { Channel as ChannelInterface, ChannelClass as ChannelClassInterface } from '@hoprnet/hopr-core-connector-interface'
+import { ApiPromise } from '@polkadot/api'
+
 export type ChannelProps = {
-  hoprPolkadot: HoprPolkadot
+  hoprPolkadot: HoprPolkadotClass
   counterparty: AccountId
 }
 
-export class Channel {
+export class ChannelClass implements ChannelClassInterface {
   private _channel?: ChannelEnum
   private _settlementWindow?: Moment
   private _channelId?: Hash
 
-  private constructor(public props: ChannelProps) {}
+  constructor(public props: ChannelProps) {}
 
   get channelId(): Promise<Hash> {
     if (this._channelId != null) {
@@ -78,8 +82,8 @@ export class Channel {
     })
   }
 
-  get state(): Promise<string> {
-    return this.channel.then(channel => channel.type)
+  get state(): Promise<ChannelEnum> {
+    return this.channel
   }
 
   get balance_a(): Promise<Balance> {
@@ -190,8 +194,20 @@ export class Channel {
     await Promise.all([channelSettler.onceClosed().then(() => channelSettler.withdraw()), channelSettler.init()])
   }
 
-  static async fromDatabase(props: ChannelProps) {
-    const channel = new Channel(props)
+  private async testAndSetNonce(signature: Uint8Array): Promise<void> {
+    const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
+
+    const key = Nonce(await this.channelId, this.props.hoprPolkadot.api.createType('Hash', nonce))
+
+    await this.props.hoprPolkadot.db.get(key).then(_ => {
+      throw Error('Nonces must not be used twice.')
+    })
+  }
+}
+
+const Channel = {
+  async fromDatabase(props: ChannelProps): Promise<ChannelClass> {
+    const channel = new ChannelClass(props)
 
     const channelId = await channel.channelId
     let record = await props.hoprPolkadot.db.get(ChannelKey(channelId)).catch(err => {
@@ -199,9 +215,9 @@ export class Channel {
     })
 
     return channel
-  }
+  },
 
-  static async open(props: ChannelProps, amount: Balance, signature: Promise<Signature>) {
+  async open(amount: Balance, signature: Promise<Uint8Array>, props: ChannelProps): Promise<ChannelClass> {
     const channelOpener = await ChannelOpener.create({
       hoprPolkadot: props.hoprPolkadot,
       counterparty: props.counterparty
@@ -214,20 +230,20 @@ export class Channel {
       channelOpener.setActive(await signature)
     ])
 
-    const channel = new Channel(props)
+    const channel = new ChannelClass(props)
 
     await props.hoprPolkadot.db.put(ChannelKey(await channel.channelId), '')
 
     return channel
-  }
+  },
 
-  private async testAndSetNonce(signature: Uint8Array): Promise<void> {
-    const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
+  getAllChannels(onData: any, onEnd: any): any {
+    return new Promise<any>(() => {})
+  },
 
-    const key = Nonce(await this.channelId, this.props.hoprPolkadot.api.createType('Hash', nonce))
-
-    await this.props.hoprPolkadot.db.get(key).then(_ => {
-      throw Error('Nonces must not be used twice.')
-    })
+  closeChannels(api: ApiPromise): Promise<Balance> {
+    return Promise.resolve(api.createType('Balance', 0))
   }
 }
+
+export default Channel

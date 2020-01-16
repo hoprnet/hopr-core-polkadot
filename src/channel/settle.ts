@@ -1,10 +1,10 @@
 import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } from '../srml_types'
 import { PushedBackSettlement } from '../events'
 import { Event } from '@polkadot/types/interfaces'
-import HoprPolkadot from '..'
+import { HoprPolkadotClass } from '..'
 
 type ChannelSettlerProps = {
-  hoprPolkadot: HoprPolkadot
+  hoprPolkadot: HoprPolkadotClass
   counterparty: AccountId
   channelId: Hash
   settlementWindow: Moment

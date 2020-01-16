@@ -3,11 +3,13 @@ import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
 
-export class Balance extends u128 {}
-export class Moment extends u64 {}
-export class Hash extends H256 {}
+import { TypeClasses } from '@hoprnet/hopr-core-connector-interface'
+
+export class Balance extends u128 implements TypeClasses.Balance {}
+export class Moment extends u64 implements TypeClasses.Moment{}
+export class Hash extends H256 implements TypeClasses.Hash {}
 export class Public extends H256 {}
-export class AccountId extends Public {}
+export class AccountId extends Public implements TypeClasses.AccountId {}
 export class TicketEpoch extends u32 {}
 
 export class ChannelBalance extends Struct.with({
@@ -54,7 +56,7 @@ export class Channel extends Enum.with({
   funded: Funded,
   active: Active,
   pendingSettlement: PendingSettlement
-}) {
+}) implements TypeClasses.Channel {
   declare asUninitialized: Uninitialized
   declare asFunded: Funded
   declare asActive: Active
@@ -106,7 +108,7 @@ export class Channel extends Enum.with({
 
 export class Signature extends Uint8Array {}
 
-export class SignedTicket {
+export class SignedTicket implements TypeClasses.SignedTicket {
   constructor(public ticket: Ticket, public signature: Uint8Array) {}
 
   toU8a(): Uint8Array {

@@ -1,15 +1,15 @@
 import { Balance, AccountId, Channel as ChannelEnum, Hash, Signature } from '../srml_types'
 import { Channel as ChannelKey } from '../db_keys'
 import { Opened, EventHandler } from '../events'
-import HoprPolkadot from '..'
+import HoprPolkadot, { HoprPolkadotClass } from '..'
 
 type ChannelOpenerProps = {
-  hoprPolkadot: HoprPolkadot
+  hoprPolkadot: HoprPolkadotClass
   counterparty: AccountId
 }
 
 export class ChannelOpener {
-  private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, private channelId: Hash) {}
+  private constructor(private hoprPolkadot: HoprPolkadotClass, private counterparty: AccountId, private channelId: Hash) {}
 
   static async create(props: ChannelOpenerProps): Promise<ChannelOpener> {
     const channelId = await HoprPolkadot.utils.getId(

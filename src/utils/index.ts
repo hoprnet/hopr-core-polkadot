@@ -121,9 +121,15 @@ export function wait(miliseconds: number): Promise<void> {
  * @param privKey private key
  * @param pubKey public key
  */
-export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Array): Promise<Uint8Array> {
+export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Array): Promise<{
+  signature: Uint8Array,
+  recovery: number
+}> {
   await waitReady()
-  return sr25519Sign(pubKey, privKey, msg)
+  return {
+    signature: sr25519Sign(pubKey, privKey, msg),
+    recovery: 0
+  }
 }
 
 /**
@@ -132,7 +138,7 @@ export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Ar
  * @param signature signature to verify
  * @param pubKey public key of the signer
  */
-export async function verify(msg: Uint8Array, signature: Uint8Array, pubKey: Uint8Array) {
+export async function verify(msg: Uint8Array, signature: Uint8Array, pubKey: Uint8Array): Promise<boolean> {
   await waitReady()
   return sr25519Verify(signature, msg, pubKey)
 }

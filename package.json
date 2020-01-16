@@ -1,5 +1,5 @@
 {
-  "name": "hopr-core-polkadot",
+  "name": "@hoprnet/hopr-core-polkadot",
   "version": "0.0.1",
   "repository": "git@github.com:hoprnet/hopr-core-polkadot.git",
   "author": "Robert Kiel <robert.kiel@validitylabs.org>",

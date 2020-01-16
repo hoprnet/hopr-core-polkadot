@@ -11,7 +11,7 @@
 
 "@hoprnet/hopr-core-connector-interface@hoprnet/hopr-core-connector-interface":
   version "1.0.0"
-  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/4dfd72672ef82ca01fb24fdfa9fccf333849058f"
+  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/4e7d39f16526d1cbed6e1d74ea74f3a572bc3ddf"
 
 "@polkadot/api-derive@^0.100.1":
   version "0.100.1"

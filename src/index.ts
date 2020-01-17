@@ -7,6 +7,7 @@ import { OnChainSecret } from './db_keys'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import * as Utils from './utils'
+import * as DbKeys from './db_keys'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
@@ -140,7 +141,8 @@ const HoprPolkadot = {
 
   utils: Utils,
   types: Types,
-  channel: Channel
+  channel: Channel,
+  dbKeys: DbKeys
 }
 
 export default HoprPolkadot

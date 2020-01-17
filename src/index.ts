@@ -92,7 +92,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     ])
 
     for (let i = 0; i < 1000; i++) {
-      secret = await HoprPolkadot.utils.hash(secret)
+      secret = await this.utils.hash(secret)
     }
 
     await this._props.api.tx.hopr
@@ -122,6 +122,12 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   async transfer(to: AccountId, amount: Balance): Promise<void> {
     this._props.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this._props.self)
   }
+
+
+  utils = Utils
+  types = Types
+  channel = Channel
+  dbKeys = DbKeys
 }
 
 const HoprPolkadot = {
@@ -141,12 +147,7 @@ const HoprPolkadot = {
       db,
       self: keyPair
     })
-  },
-
-  utils: Utils,
-  types: Types,
-  channel: Channel,
-  dbKeys: DbKeys
+  }
 }
 
 export default HoprPolkadot

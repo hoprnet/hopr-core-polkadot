@@ -3,7 +3,6 @@ import { sr25519Verify, sr25519Sign, blake2b } from '@polkadot/wasm-crypto'
 import { Nonce, Channel as ChannelKey, ChannelKeyParse, Challenge as ChallengeKey, ChallengeKeyParse } from '../db_keys'
 import { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
-import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
 import { getId, isPartyA, u8aXOR } from '../utils'
 
@@ -142,7 +141,12 @@ export class ChannelClass implements ChannelClassInterface {
     })
   }
 
-  async createTicket(secretKey: Uint8Array, amount: Balance, challenge: Hash, winProb: Hash): Promise<SignedTicket> {
+  private async createTicket(
+    secretKey: Uint8Array,
+    amount: Balance,
+    challenge: Hash,
+    winProb: Hash
+  ): Promise<SignedTicket> {
     const { epoch } = await this.props.hoprPolkadot.api.query.hopr.state<State>(this.props.counterparty)
 
     const ticket = new Ticket(this.props.hoprPolkadot.api.registry, {
@@ -158,7 +162,7 @@ export class ChannelClass implements ChannelClassInterface {
     return new SignedTicket(ticket, signature)
   }
 
-  async verifyTicket(signedTicket: SignedTicket): Promise<boolean> {
+  private async verifyTicket(signedTicket: SignedTicket): Promise<boolean> {
     if ((await this.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await this.balance)) {
       return false
     }
@@ -172,7 +176,19 @@ export class ChannelClass implements ChannelClassInterface {
     return sr25519Verify(signedTicket.signature, signedTicket.ticket.toU8a(), this.props.counterparty.toU8a())
   }
 
-  async submitTicket(signedTicket: SignedTicket) {}
+  // private async aggregateTicket(tickets: Ticket[]): Promise<Ticket> {
+  //   throw Error('not implemented')
+  //   return Promise.resolve(tickets[0])
+  // }
+
+  private async submitTicket(signedTicket: SignedTicket) {}
+
+  ticket = {
+    create: this.createTicket,
+    verify: this.verifyTicket,
+    submit: this.submitTicket,
+    // aggregate: this.aggregateTicket
+  }
 
   async initiateSettlement(): Promise<void> {
     let channelSettler: ChannelSettler
@@ -234,145 +250,3 @@ export class ChannelClass implements ChannelClassInterface {
     })
   }
 }
-
-const Channel = {
-  async create(props: ChannelProps): Promise<ChannelClass> {
-    let record = await props.hoprPolkadot.db.get(ChannelKey(props.counterparty))
-
-    return new ChannelClass(props, createTypeUnsafe<ChannelEnum>(props.hoprPolkadot.api.registry, 'Channel', record))
-  },
-
-  async open(amount: Balance, signature: Promise<Uint8Array>, props: ChannelProps): Promise<ChannelClass> {
-    const channelOpener = await ChannelOpener.create({
-      hoprPolkadot: props.hoprPolkadot,
-      counterparty: props.counterparty
-    })
-
-    await channelOpener.increaseFunds(amount)
-    await Promise.all([
-      /* prettier-ignore */
-      channelOpener.onceOpen(),
-      channelOpener.setActive(await signature)
-    ])
-
-    const channel = new ChannelClass(props)
-
-    await props.hoprPolkadot.db.put(ChannelKey(await channel.channelId), '')
-
-    return channel
-  },
-
-  getAllChannels<T, R>(
-    onData: (channel: ChannelClass) => T,
-    onEnd: (promises: Promise<T>[]) => R,
-    hoprPolkadot: HoprPolkadotClass
-  ): Promise<R> {
-    const promises: Promise<T>[] = []
-    return new Promise<R>((resolve, reject) => {
-      hoprPolkadot.db
-        .createReadStream({
-          gt: ChannelKey(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))),
-          lt: ChannelKey(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
-        })
-        .on('error', err => reject(err))
-        .on('data', ({ key, value }) => {
-          const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
-
-          promises.push(
-            Promise.resolve(
-              onData(
-                new ChannelClass({
-                  counterparty: ChannelKeyParse(key, hoprPolkadot.api),
-                  hoprPolkadot
-                })
-              )
-            )
-          )
-        })
-        .on('end', () => resolve(onEnd(promises)))
-    })
-  },
-
-  async closeChannels(hoprPolkadot: HoprPolkadotClass): Promise<Balance> {
-    return this.getAllChannels(
-      (channel: ChannelClass) => {
-        channel.initiateSettlement()
-      },
-      async (promises: Promise<void>[]) => {
-        return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
-      },
-      hoprPolkadot
-    )
-  }
-}
-
-export default Channel
-
-// async setState(channelId, newState) {
-//   // console.log(chalk.blue(this.node.peerInfo.id.toB58String()), newState)
-
-//   let record = {}
-//   try {
-//       record = await this.state(channelId)
-//   } catch (err) {
-//       if (!err.notFound) throw err
-//   }
-
-//   Object.assign(record, newState)
-
-//   // if (!record.counterparty && record.state != this.TransactionRecordState.PRE_OPENED) throw Error(`no counterparty '${JSON.stringify(record)}'`)
-
-//   // if (!record.restoreTransaction && record.state != this.TransactionRecordState.PRE_OPENED)
-//   //     throw Error(`no restore transaction '${JSON.stringify(record)}'`)
-
-//   if (record.restoreTransaction) record.restoreTransaction = record.restoreTransaction.toBuffer()
-//   if (record.lastTransaction) record.lastTransaction = record.lastTransaction.toBuffer()
-
-//   return this.node.db.put(this.State(channelId), TransactionRecord.encode(record))
-// }
-
-//   /**
-//    * Computes the delta of funds that were received with the given transaction in relation to the
-//    * initial balance.
-//    *
-//    * @param {Buffer} newValue the transaction upon which the delta funds is computed
-//    * @param {Buffer} currentValue the currentValue of the payment channel.
-//    * @param {PeerId} counterparty peerId of the counterparty that is used to decide which side of
-//    * payment channel we are, i. e. party A or party B.
-//    */
-//   getEmbeddedMoney(newValue, currentValue, counterparty) {
-//     currentValue = new BN(currentValue)
-//     newValue = new BN(newValue)
-
-//     const self = pubKeyToEthereumAddress(this.node.peerInfo.id.pubKey.marshal())
-//     const otherParty = pubKeyToEthereumAddress(counterparty.pubKey.marshal())
-
-//     if (isPartyA(self, otherParty)) {
-//         return newValue.isub(currentValue)
-//     } else {
-//         return currentValue.isub(newValue)
-//     }
-// }
-
-// async state(channelId, encodedRecord) {
-//   if (!encodedRecord) {
-//       try {
-//           encodedRecord = await this.node.db.get(this.State(channelId))
-//       } catch (err) {
-//           if (err.notFound) {
-//               err = Error(`Couldn't find any record for channel ${chalk.yellow(channelId.toString('hex'))}`)
-
-//               err.notFound = true
-//           }
-
-//           throw err
-//       }
-//   }
-
-//   const record = TransactionRecord.decode(encodedRecord)
-
-//   if (record.restoreTransaction) record.restoreTransaction = Transaction.fromBuffer(record.restoreTransaction)
-//   if (record.lastTransaction) record.lastTransaction = Transaction.fromBuffer(record.lastTransaction)
-
-//   return record
-// }

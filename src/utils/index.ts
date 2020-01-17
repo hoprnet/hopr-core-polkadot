@@ -10,7 +10,6 @@ const BYTESIZE: number = 32 // bytes
 
 /**
  * Performs an on-chain hash to the given argument.
- *
  * @param arg argument to hash
  */
 export async function hash(arg: Uint8Array): Promise<Uint8Array> {
@@ -20,7 +19,6 @@ export async function hash(arg: Uint8Array): Promise<Uint8Array> {
 
 /**
  * Creates an AccountId from a given public key.
- *
  * @param pubkey public key
  * @param api Polkadot API
  */

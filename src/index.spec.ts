@@ -10,7 +10,6 @@ import { KeyringPair } from '@polkadot/keyring/types'
 import { createTypeUnsafe } from '@polkadot/types'
 
 import { Channel as ChannelEnum, Funded, ChannelBalance, Moment } from './srml_types'
-import Channel from './channel'
 
 import { wait, waitForNextBlock, getId } from './utils'
 
@@ -154,7 +153,7 @@ describe('Hopr Polkadot', async function() {
 
     console.log(chalk.green('Opening channel'))
 
-    const channelOpener = await Channel.open(
+    const channelOpener = await hoprAlice.channel.open(
       balance,
       Promise.resolve(Bob.sign(channelEnum.toU8a())),
       {

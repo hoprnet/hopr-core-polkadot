@@ -108,7 +108,7 @@ export class Channel extends Enum.with({
 
 export class Signature extends Uint8Array {}
 
-export class SignedTicket implements TypeClasses.SignedTicket {
+export class SignedTicket {
   constructor(public ticket: Ticket, public signature: Uint8Array) {}
 
   toU8a(): Uint8Array {

@@ -2,7 +2,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance } from './srml_types'
+import { Types, SRMLTypes, Balance, AccountId } from './srml_types'
 import { OnChainSecret } from './db_keys'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
@@ -117,6 +117,10 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
         resolve()
       })
     })
+  }
+
+  async transfer(to: AccountId, amount: Balance): Promise<void> {
+    this._props.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this._props.self)
   }
 }
 

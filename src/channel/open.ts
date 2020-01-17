@@ -19,7 +19,7 @@ export class ChannelOpener {
     )
 
     await props.hoprPolkadot.db
-      .get(ChannelKey(channelId))
+      .get(ChannelKey(props.counterparty))
       .then(_ => {
         throw Error('Channel must not exit.')
       })

@@ -31,7 +31,7 @@ export function Challenge(channelId: Hash, challenge: Hash): Uint8Array {
   ])
 }
 
-export function ChallengeKeyParse(arr: Uint8Array, api: ApiPromise) {
+export function ChallengeKeyParse(arr: Uint8Array, api: ApiPromise): [Hash, Hash] {
   return [
     api.createType('Hash', arr.subarray(PREFIX.length + channelSubPrefix.length, PREFIX.length + channelSubPrefix.length + Hash.length)),
     api.createType('Hash', arr.subarray(PREFIX.length + channelSubPrefix.length + Hash.length + SEPERATOR.length, PREFIX.length + channelSubPrefix.length + Hash.length + SEPERATOR.length + Hash.length))

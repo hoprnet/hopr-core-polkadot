@@ -236,8 +236,10 @@ export class ChannelClass implements ChannelClassInterface {
 }
 
 const Channel = {
-  create(props: ChannelProps): Promise<ChannelEnum> {
-    return new ChannelClass(props).state
+  async create(props: ChannelProps): Promise<ChannelClass> {
+    let record = await props.hoprPolkadot.db.get(ChannelKey(props.counterparty))
+
+    return new ChannelClass(props, createTypeUnsafe<ChannelEnum>(props.hoprPolkadot.api.registry, 'Channel', record))
   },
 
   async open(amount: Balance, signature: Promise<Uint8Array>, props: ChannelProps): Promise<ChannelClass> {

@@ -11,6 +11,8 @@ export class Hash extends H256 implements TypeClasses.Hash {}
 export class Public extends H256 {}
 export class AccountId extends Public implements TypeClasses.AccountId {}
 export class TicketEpoch extends u32 {}
+export class ChannelId extends H256 {}
+export class PreImage extends H256 {}
 
 export class ChannelBalance extends Struct.with({
   balance: Balance,
@@ -145,6 +147,8 @@ export class Ticket extends Struct.with({
 const SRMLTypes = {
   AccountId,
   Balance,
+  ChannelId,
+  PreImage,
   Moment,
   Hash,
   Public,

@@ -17,6 +17,8 @@ import { ChannelProps, ChannelClass } from './channel'
 
 import { HoprCoreConnectorClass } from '@hoprnet/hopr-core-connector-interface'
 
+export { Utils, DbKeys }
+
 export type HoprPolkadotProps = {
   self: KeyringPair
   api: ApiPromise

@@ -17,7 +17,8 @@
     "@polkadot/api": "^0.100.1",
     "@polkadot/util": "^1.8.1",
     "@polkadot/wasm-crypto": "^0.14.1",
-    "chalk": "^3.0.0"
+    "chalk": "^3.0.0",
+    "secp256k1": "^3"
   },
   "devDependencies": {
     "@hoprnet/hopr-core-connector-interface": "hoprnet/hopr-core-connector-interface",
@@ -25,6 +26,7 @@
     "@types/memdown": "^3.0.0",
     "@types/mocha": "^5.2.7",
     "@types/node": "^12.12.21",
+    "@types/secp256k1": "^3.5.0",
     "chai": "^4.2.0",
     "levelup": "^4.3.2",
     "memdown": "^5.1.0",

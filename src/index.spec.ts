@@ -11,7 +11,8 @@ import { createTypeUnsafe } from '@polkadot/types'
 
 import { Channel as ChannelEnum, Funded, ChannelBalance, Moment } from './srml_types'
 
-import { wait, waitForNextBlock, getId } from './utils'
+import UtilsClass from './utils'
+const Utils = new UtilsClass()
 
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
@@ -80,7 +81,7 @@ describe('Hopr Polkadot', async function() {
 
     polkadotNode.stdout?.on('data', data => console.log(data.toString()))
 
-    await wait(14 * 1000)
+    await Utils.wait(14 * 1000)
     ;[hoprAlice, hoprBob] = await Promise.all([
       HoprPolkadot.create(LevelUp(Memdown()), Alice),
       HoprPolkadot.create(LevelUp(Memdown()), Bob)
@@ -118,7 +119,7 @@ describe('Hopr Polkadot', async function() {
         .signAndSend(Alice, { nonce: third })
     ])
 
-    await waitForNextBlock(hoprAlice.api)
+    await Utils.waitForNextBlock(hoprAlice.api)
 
     await hoprAlice.api.tx.balances.transfer(Bob.publicKey, 123).signAndSend(Alice)
 
@@ -156,27 +157,24 @@ describe('Hopr Polkadot', async function() {
     const channelOpener = await hoprAlice.channel.open(
       balance,
       Promise.resolve(Bob.sign(channelEnum.toU8a())),
-      {
-        hoprPolkadot: hoprAlice,
-        counterparty: hoprAlice.api.createType('AccountId', Bob.publicKey)
-      }
+      hoprAlice.api.createType('AccountId', Bob.publicKey)
     )
 
     console.log('channel opened')
 
-    const channelId = await getId(
+    const channelId = await Utils.getId(
       hoprAlice.api.createType('AccountId', Alice.publicKey),
       hoprAlice.api.createType('AccountId', Bob.publicKey),
       hoprAlice.api
     )
 
-    await waitForNextBlock(hoprAlice.api)
+    await Utils.waitForNextBlock(hoprAlice.api)
 
     let channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
     console.log(channel.asActive.toString())
 
     await channelOpener.initiateSettlement()
-    await waitForNextBlock(hoprAlice.api)
+    await Utils.waitForNextBlock(hoprAlice.api)
 
     channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
     console.log(`Channel '${channel.toString()}`)

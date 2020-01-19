@@ -2,7 +2,8 @@ import { Hash, Balance } from './srml_types'
 import { Vec } from '@polkadot/types/codec'
 import { ApiPromise } from '@polkadot/api'
 import { EventRecord, Event } from '@polkadot/types/interfaces'
-import { compareArray } from './utils'
+import UtilsClass from './utils'
+const Utils = new UtilsClass()
 
 export type EventHandler = (event: Event) => void
 
@@ -120,7 +121,7 @@ export class EventSignalling {
           ?.find((subscription: EventSubscription) => {
             let ok = true
             subscription.args.forEach((arg, index) => {
-              ok = ok && compareArray(subscriptionArgs.get(index) || new Uint8Array([]), arg)
+              ok = ok && Utils.compareArray(subscriptionArgs.get(index) || new Uint8Array([]), arg)
             })
             return ok
           })
@@ -223,7 +224,7 @@ function compareEventSubscriptions(a: SubscriptionArgs, b?: SubscriptionArgs) {
     iteratorArg = iterator.next()
     argValue = b.get(iteratorArg.value[0])
 
-    if (argValue == null || !compareArray(argValue, iteratorArg.value[1])) {
+    if (argValue == null || !Utils.compareArray(argValue, iteratorArg.value[1])) {
       return false
     }
   } while (!iteratorArg.done)

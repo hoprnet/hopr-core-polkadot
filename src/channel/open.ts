@@ -1,31 +1,26 @@
 import { Balance, AccountId, Channel as ChannelEnum, Hash, Signature } from '../srml_types'
-import { Channel as ChannelKey } from '../db_keys'
+
 import { Opened, EventHandler } from '../events'
 import { HoprPolkadotClass } from '..'
-
-type ChannelOpenerProps = {
-  hoprPolkadot: HoprPolkadotClass
-  counterparty: AccountId
-}
 
 export class ChannelOpener {
   private constructor(private hoprPolkadot: HoprPolkadotClass, private counterparty: AccountId, private channelId: Hash) {}
 
-  static async create(props: ChannelOpenerProps): Promise<ChannelOpener> {
-    const channelId = await props.hoprPolkadot.utils.getId(
-      props.hoprPolkadot.api.createType('AccountId', props.hoprPolkadot.self.publicKey),
-      props.counterparty,
-      props.hoprPolkadot.api
+  static async create(hoprPolkadot: HoprPolkadotClass, counterparty: AccountId): Promise<ChannelOpener> {
+    const channelId = await hoprPolkadot.utils.getId(
+      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.publicKey),
+      counterparty,
+      hoprPolkadot.api
     )
 
-    await props.hoprPolkadot.db
-      .get(ChannelKey(props.counterparty))
+    await hoprPolkadot.db
+      .get(hoprPolkadot.dbKeys.Channel(counterparty))
       .then(_ => {
         throw Error('Channel must not exit.')
       })
       .catch(_ => {})
 
-    return new ChannelOpener(props.hoprPolkadot, props.counterparty, channelId)
+    return new ChannelOpener(hoprPolkadot, counterparty, channelId)
   }
 
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
@@ -67,7 +62,7 @@ export class ChannelOpener {
       this.hoprPolkadot.api.tx.hopr
         .setActive(this.counterparty, signature)
         .signAndSend(this.hoprPolkadot.self, { nonce: await this.hoprPolkadot.nonce }),
-      this.hoprPolkadot.db.put(ChannelKey(this.channelId), '')
+      this.hoprPolkadot.db.put(this.hoprPolkadot.dbKeys.Channel(this.channelId), '')
     ])
 
     return this

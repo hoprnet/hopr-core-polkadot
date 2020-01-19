@@ -4,7 +4,8 @@
   "repository": "git@github.com:hoprnet/hopr-core-polkadot.git",
   "author": "Robert Kiel <robert.kiel@validitylabs.org>",
   "license": "LGPL-3.0-only",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "preinstall": "tsc -d -p .",
     "test": "npx mocha"

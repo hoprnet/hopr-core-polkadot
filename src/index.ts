@@ -5,8 +5,9 @@ import { EventSignalling } from './events'
 import { Types, SRMLTypes, Balance, AccountId, Channel as ChannelEnum, Hash } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
-import Utils from './utils'
-import DbKeys from './db_keys'
+import UtilsClass from './utils'
+import DbKeysClass from './db_keys'
+import ConstantsClass from './constants'
 import { createTypeUnsafe } from '@polkadot/types'
 import { ChannelOpener } from './channel/open'
 
@@ -16,7 +17,11 @@ import { ChannelClass } from './channel'
 
 import { HoprCoreConnectorClass } from '@hoprnet/hopr-core-connector-interface'
 
-export { Utils, DbKeys }
+const Utils = new UtilsClass()
+const DbKeys = new DbKeysClass()
+const Constants = new ConstantsClass()
+
+export { Utils, DbKeys, Constants, ChannelClass as Channel, Types }
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -126,7 +131,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     this._props.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this._props.self)
   }
 
-  utils = new Utils()
+  utils = Utils
   types = Types
 
   private async createChannel(counterparty: AccountId): Promise<ChannelClass> {
@@ -198,7 +203,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     closeChannels: this.closeChannels
   }
 
-  dbKeys = new DbKeys()
+  dbKeys = DbKeys
 }
 
 const HoprPolkadot = {

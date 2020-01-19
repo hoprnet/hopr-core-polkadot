@@ -5,12 +5,11 @@
     "outDir": "./lib",
     "noImplicitAny": true,
     "moduleResolution": "node",
-    "lib": ["es2017"],
+    "lib": ["es2020", "dom"],
     "module": "commonjs",
-    "target": "es2017",
+    "target": "es2019",
     "strict": true,
     "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules/"]
 }

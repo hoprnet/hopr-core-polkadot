@@ -1,12 +1,13 @@
 {
-  "compileOnSave": true,
   "compilerOptions": {
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "outDir": "./lib",
     "noImplicitAny": true,
     "moduleResolution": "node",
-    "target": "es2019",
+    "lib": ["es2017"],
+    "module": "commonjs",
+    "target": "es2017",
     "strict": true,
     "sourceMap": true
   },

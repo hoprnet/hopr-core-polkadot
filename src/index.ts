@@ -204,6 +204,8 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   }
 
   dbKeys = DbKeys
+
+  constants = Constants
 }
 
 const HoprPolkadot = {

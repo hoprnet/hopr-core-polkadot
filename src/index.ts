@@ -6,7 +6,7 @@ import { Types, SRMLTypes, Balance, AccountId, Channel as ChannelEnum, Hash } fr
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import UtilsClass from './utils'
-import DbKeysClass from './db_keys'
+import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
 import { createTypeUnsafe } from '@polkadot/types'
 import { ChannelOpener } from './channel/open'
@@ -35,8 +35,8 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
 
   eventSubscriptions: EventSignalling
 
-  constructor(private _props: HoprPolkadotProps) {
-    this.eventSubscriptions = new EventSignalling(this._props.api)
+  constructor(public api: ApiPromise, public self: KeyringPair, public db: LevelUp) {
+    this.eventSubscriptions = new EventSignalling(this.api)
   }
 
   get started(): boolean {
@@ -51,18 +51,6 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     this._started = started
   }
 
-  get api(): ApiPromise {
-    return this._props.api
-  }
-
-  get self(): KeyringPair {
-    return this._props.self
-  }
-
-  get db(): LevelUp {
-    return this._props.db
-  }
-
   get nonce(): Promise<number> {
     if (this._nonce != null) {
       return Promise.resolve(this._nonce++)
@@ -70,7 +58,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
 
     return new Promise<number>(async (resolve, reject) => {
       try {
-        this._nonce = (await this._props.api.query.system.accountNonce(this._props.self.publicKey)).toNumber()
+        this._nonce = (await this.api.query.system.accountNonce(this.self.publicKey)).toNumber()
       } catch (err) {
         return reject(err)
       }
@@ -82,7 +70,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   async start(): Promise<void> {
     await Promise.all([
       // prettier-ignore
-      this._props.api.isReady
+      this.api.isReady
     ])
 
     this.started = true
@@ -95,7 +83,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
 
     await Promise.all([
       /* prettier-ignore */
-      this._props.db.put(this.dbKeys.OnChainSecret(), secret),
+      this.db.put(this.dbKeys.OnChainSecret(), secret),
       waitReady()
     ])
 
@@ -103,14 +91,14 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
       secret = await this.utils.hash(secret)
     }
 
-    await this._props.api.tx.hopr
-      .init(this._props.api.createType('Hash', this._props.self.publicKey), secret)
-      .signAndSend(this._props.self, { nonce: nonce || (await this.nonce) })
+    await this.api.tx.hopr
+      .init(this.api.createType('Hash', this.self.publicKey), secret)
+      .signAndSend(this.self, { nonce: nonce || (await this.nonce) })
   }
 
   async checkFreeBalance(newBalance: Balance): Promise<void> {
-    const balance: Balance = await this._props.api.query.balances.freeBalance<Balance>(
-      this._props.api.createType('AccountId', this._props.self.publicKey)
+    const balance: Balance = await this.api.query.balances.freeBalance<Balance>(
+      this.api.createType('AccountId', this.self.publicKey)
     )
 
     if (balance.lt(newBalance))
@@ -118,33 +106,32 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   }
 
   async stop(): Promise<void> {
-    this._props.api.disconnect()
+    this.api.disconnect()
 
     return new Promise(resolve => {
-      this._props.api.once('disconnected', () => {
+      this.api.once('disconnected', () => {
         resolve()
       })
     })
   }
 
+  async getAccountBalance(): Promise<Balance> {
+    return this.api.query.balances.freeBalance<Balance>(this.self.publicKey)
+  }
   async transfer(to: AccountId, amount: Balance): Promise<void> {
-    this._props.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this._props.self)
+    this.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this.self)
   }
 
   utils = Utils
   types = Types
 
-  private async createChannel(counterparty: AccountId): Promise<ChannelClass> {
-    let record = await this.db.get(this.dbKeys.Channel(counterparty))
-
-    return new ChannelClass(this, counterparty, createTypeUnsafe<ChannelEnum>(this.api.registry, 'Channel', record))
-  }
 
   private async openChannel(
     amount: Balance,
     signature: Promise<Uint8Array>,
     counterparty: AccountId
   ): Promise<ChannelClass> {
+    console.log(this)
     const channelOpener = await ChannelOpener.create(this, counterparty)
 
     await channelOpener.increaseFunds(amount)
@@ -161,46 +148,68 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     return channel
   }
 
-  private getAllChannels<T, R>(
-    onData: (channel: ChannelClass) => T,
-    onEnd: (promises: Promise<T>[]) => R,
-    hoprPolkadot: HoprPolkadotClass
-  ): Promise<R> {
-    const promises: Promise<T>[] = []
-    return new Promise<R>((resolve, reject) => {
-      hoprPolkadot.db
-        .createReadStream({
-          gt: this.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))),
-          lt: this.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
-        })
-        .on('error', err => reject(err))
-        .on('data', ({ key, value }) => {
-          const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
-
-          promises.push(
-            Promise.resolve(onData(new ChannelClass(this, this.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel)))
-          )
-        })
-        .on('end', () => resolve(onEnd(promises)))
-    })
-  }
-
-  private async closeChannels(hoprPolkadot: HoprPolkadotClass): Promise<Balance> {
-    return this.getAllChannels(
-      (channel: ChannelClass) => {
-        channel.initiateSettlement()
-      },
-      async (promises: Promise<void>[]) => {
-        return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
-      },
-      hoprPolkadot
-    )
-  }
   channel = {
-    create: this.createChannel,
-    open: this.openChannel,
-    getAll: this.getAllChannels,
-    closeChannels: this.closeChannels
+    self: this,
+    async create(counterparty: AccountId): Promise<ChannelClass> {
+      let record = await this.self.db.get(this.self.dbKeys.Channel(counterparty))
+  
+      return new ChannelClass(this.self, counterparty, createTypeUnsafe<ChannelEnum>(this.self.api.registry, 'Channel', record))
+    },
+    async open(
+      amount: Balance,
+      signature: Promise<Uint8Array>,
+      counterparty: AccountId
+    ): Promise<ChannelClass> {
+      const channelOpener = await ChannelOpener.create(this.self, counterparty)
+  
+
+      await channelOpener.increaseFunds(amount)
+      await Promise.all([
+        /* prettier-ignore */
+        channelOpener.onceOpen(),
+        channelOpener.setActive(await signature)
+      ])
+  
+      const channel = new ChannelClass(this.self, counterparty)
+  
+      await this.self.db.put(this.self.dbKeys.Channel(await channel.channelId), '')
+  
+      return channel
+    },
+    getAll<T, R>(
+      onData: (channel: ChannelClass) => T,
+      onEnd: (promises: Promise<T>[]) => R,
+      hoprPolkadot: HoprPolkadotClass
+    ): Promise<R> {
+      const promises: Promise<T>[] = []
+      return new Promise<R>((resolve, reject) => {
+        hoprPolkadot.db
+          .createReadStream({
+            gt: this.self.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))),
+            lt: this.self.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
+          })
+          .on('error', err => reject(err))
+          .on('data', ({ key, value }) => {
+            const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
+  
+            promises.push(
+              Promise.resolve(onData(new ChannelClass(this.self, this.self.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel)))
+            )
+          })
+          .on('end', () => resolve(onEnd(promises)))
+      })
+    },
+    async closeChannels(hoprPolkadot: HoprPolkadotClass): Promise<Balance> {
+      return this.getAll(
+        (channel: ChannelClass) => {
+          channel.initiateSettlement()
+        },
+        async (promises: Promise<void>[]) => {
+          return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
+        },
+        hoprPolkadot
+      )
+    }
   }
 
   dbKeys = DbKeys
@@ -220,11 +229,7 @@ const HoprPolkadot = {
       types: SRMLTypes
     })
 
-    return new HoprPolkadotClass({
-      api,
-      db,
-      self: keyPair
-    })
+    return new HoprPolkadotClass(api, keyPair, db)
   }
 }
 

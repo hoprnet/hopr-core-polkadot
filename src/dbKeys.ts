@@ -79,6 +79,18 @@ export default class DbKeys implements IDbKeys {
       [subPrefix.length, subPrefix]
     ])
   }
+
+  Ticket(channelId: Hash, challenge: Hash): Uint8Array {
+    const subPrefix = encoder.encode('ticket-')
+
+    return allocationHelper([
+      [PREFIX.length, PREFIX],
+      [subPrefix.length, subPrefix],
+      [channelId.length, channelId],
+      [SEPERATOR.length, SEPERATOR],
+      [challenge.length, challenge]
+    ])
+  }
 }
 
 type Config = [number, Uint8Array]

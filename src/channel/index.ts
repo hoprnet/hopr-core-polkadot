@@ -139,7 +139,7 @@ export class ChannelClass implements ChannelClassInterface {
   }
 
   ticket = {
-    self: this,
+    self: this as ChannelClass,
     async create(secretKey: Uint8Array, amount: Balance, challenge: Hash, winProb: Hash): Promise<SignedTicket> {
       const { epoch } = await this.self.hoprPolkadot.api.query.hopr.state<State>(this.self.counterparty)
 

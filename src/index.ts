@@ -150,7 +150,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   }
 
   channel = {
-    self: this,
+    self: this as HoprPolkadotClass,
     async create(counterparty: AccountId): Promise<ChannelClass> {
       let record = await this.self.db.get(this.self.dbKeys.Channel(counterparty))
   

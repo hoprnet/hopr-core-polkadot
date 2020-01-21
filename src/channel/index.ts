@@ -138,53 +138,41 @@ export class ChannelClass implements ChannelClassInterface {
     })
   }
 
-  private async createTicket(
-    secretKey: Uint8Array,
-    amount: Balance,
-    challenge: Hash,
-    winProb: Hash
-  ): Promise<SignedTicket> {
-    const { epoch } = await this.hoprPolkadot.api.query.hopr.state<State>(this.counterparty)
-
-    const ticket = new Ticket(this.hoprPolkadot.api.registry, {
-      channelId: await this.channelId,
-      epoch,
-      challenge,
-      amount,
-      winProb
-    })
-
-    const signature = sr25519Sign(this.hoprPolkadot.self.publicKey, secretKey, ticket.toU8a())
-
-    return new SignedTicket(ticket, signature)
-  }
-
-  private async verifyTicket(signedTicket: SignedTicket): Promise<boolean> {
-    if ((await this.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await this.balance)) {
-      return false
-    }
-
-    try {
-      await this.testAndSetNonce(signedTicket.toU8a())
-    } catch (_) {
-      return false
-    }
-
-    return sr25519Verify(signedTicket.signature, signedTicket.ticket.toU8a(), this.counterparty.toU8a())
-  }
-
-  // private async aggregateTicket(tickets: Ticket[]): Promise<Ticket> {
-  //   throw Error('not implemented')
-  //   return Promise.resolve(tickets[0])
-  // }
-
-  private async submitTicket(signedTicket: SignedTicket) {}
-
   ticket = {
-    create: this.createTicket,
-    verify: this.verifyTicket,
-    submit: this.submitTicket
-    // aggregate: this.aggregateTicket
+    self: this,
+    async create(secretKey: Uint8Array, amount: Balance, challenge: Hash, winProb: Hash): Promise<SignedTicket> {
+      const { epoch } = await this.self.hoprPolkadot.api.query.hopr.state<State>(this.self.counterparty)
+
+      const ticket = new Ticket(this.self.hoprPolkadot.api.registry, {
+        channelId: await this.self.channelId,
+        epoch,
+        challenge,
+        amount,
+        winProb
+      })
+
+      const signature = sr25519Sign(this.self.hoprPolkadot.self.publicKey, secretKey, ticket.toU8a())
+
+      return new SignedTicket(ticket, signature)
+    },
+    async verify(signedTicket: SignedTicket): Promise<boolean> {
+      if ((await this.self.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await this.self.balance)) {
+        return false
+      }
+
+      try {
+        await this.self.testAndSetNonce(signedTicket.toU8a())
+      } catch (_) {
+        return false
+      }
+
+      return sr25519Verify(signedTicket.signature, signedTicket.ticket.toU8a(), this.self.counterparty.toU8a())
+    },
+    async submit(signedTicket: SignedTicket) {}
+    // async aggregate(tickets: Ticket[]): Promise<Ticket> {
+    //   throw Error('not implemented')
+    //   return Promise.resolve(tickets[0])
+    // }
   }
 
   async initiateSettlement(): Promise<void> {

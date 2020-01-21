@@ -11,7 +11,8 @@
     "test": "npx mocha"
   },
   "files": [
-    "lib/"
+    "lib/",
+    "hopr.png"
   ],
   "engines": {
     "yarn": "^1.19.2",
@@ -21,11 +22,13 @@
     "@polkadot/api": "^0.100.1",
     "@polkadot/util": "^1.8.1",
     "@polkadot/wasm-crypto": "^0.14.1",
+    "bn.js": "~5.1.1",
     "chalk": "^3.0.0",
     "secp256k1": "^3"
   },
   "devDependencies": {
     "@hoprnet/hopr-core-connector-interface": "hoprnet/hopr-core-connector-interface",
+    "@types/bn.js": "~4.11.6",
     "@types/levelup": "^4.3.0",
     "@types/memdown": "^3.0.0",
     "@types/mocha": "^5.2.7",

@@ -10,6 +10,7 @@ import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
 import { createTypeUnsafe } from '@polkadot/types'
 import { ChannelOpener } from './channel/open'
+import Ticket from './channel/ticket'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
@@ -21,7 +22,7 @@ const Utils = new UtilsClass()
 const DbKeys = new DbKeysClass()
 const Constants = new ConstantsClass()
 
-export { Utils, DbKeys, Constants, ChannelClass as Channel, Types }
+export { Utils, DbKeys, Constants, ChannelClass as Channel, Types, Ticket }
 
 export type HoprPolkadotProps = {
   self: KeyringPair

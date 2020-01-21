@@ -2,6 +2,7 @@ import { Null, u32, u64, u128, H256 } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
+import Ticket from './channel/ticket'
 
 import { TypeClasses } from '@hoprnet/hopr-core-connector-interface'
 
@@ -118,6 +119,8 @@ export class SignedTicket {
   }
 }
 
+export { Ticket }
+
 export class State extends Struct.with({
   epoch: TicketEpoch,
   secret: Hash,
@@ -126,22 +129,6 @@ export class State extends Struct.with({
   declare secret: Hash
   declare pubkey: Public
   declare epoch: TicketEpoch
-}
-
-export class Ticket extends Struct.with({
-  channelId: Hash,
-  challenge: Hash,
-  epoch: TicketEpoch,
-  amount: Balance,
-  winProb: Hash,
-  onChainSecret: Hash
-}) {
-  declare channelId: Hash
-  declare challenge: Hash
-  declare epoch: TicketEpoch
-  declare amount: Balance
-  declare winProb: Hash
-  declare onChainSecret: Hash
 }
 
 const SRMLTypes = {

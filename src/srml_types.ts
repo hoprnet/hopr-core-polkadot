@@ -2,12 +2,20 @@ import { Null, u32, u64, u128, H256 } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
-import Ticket from './channel/ticket'
+import BN from 'bn.js'
+
+import { Ticket as ITicket } from '@hoprnet/hopr-core-connector-interface'
 
 import { TypeClasses } from '@hoprnet/hopr-core-connector-interface'
 
+const SECP256K1_SIGNATURE_LENGTH = 64
+const SECP256K1_SIGNATURE_RECOVERY_LENGTH = 1
+const SR25519_PUBLIC_KEY_LENGTH = 32
+const ON_CHAIN_SIGNATURE_OFFSET =
+  SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH
+
 export class Balance extends u128 implements TypeClasses.Balance {}
-export class Moment extends u64 implements TypeClasses.Moment{}
+export class Moment extends u64 implements TypeClasses.Moment {}
 export class Hash extends H256 implements TypeClasses.Hash {}
 export class Public extends H256 {}
 export class AccountId extends Public implements TypeClasses.AccountId {}
@@ -54,12 +62,14 @@ export class PendingSettlement extends Tuple.with([ChannelBalance, Moment]) {
   }
 }
 
-export class Channel extends Enum.with({
-  uninitialized: Uninitialized,
-  funded: Funded,
-  active: Active,
-  pendingSettlement: PendingSettlement
-}) implements TypeClasses.Channel {
+export class Channel
+  extends Enum.with({
+    uninitialized: Uninitialized,
+    funded: Funded,
+    active: Active,
+    pendingSettlement: PendingSettlement
+  })
+  implements TypeClasses.Channel {
   declare asUninitialized: Uninitialized
   declare asFunded: Funded
   declare asActive: Active
@@ -109,18 +119,87 @@ export class Channel extends Enum.with({
   }
 }
 
-export class Signature extends Uint8Array {}
+export class Signature extends Uint8Array implements TypeClasses.Signature {
+  constructor(
+    arr?: Uint8Array,
+    signatures?: {
+      secp256k1Signature: Uint8Array
+      secp256k1Recovery: number
+      sr25519PublicKey: Uint8Array
+      sr25519Signature: Uint8Array
+    }
+  ) {
+    if (arr == null && signatures != null) {
+      super(
+        u8aConcat(
+          signatures.secp256k1Signature,
+          new Uint8Array([signatures.secp256k1Recovery]),
+          signatures.sr25519PublicKey,
+          signatures.sr25519Signature
+        )
+      )
+    } else if (arr != null && signatures == null) {
+      super(arr)
+    }
+  }
 
-export class SignedTicket {
-  constructor(public ticket: Ticket, public signature: Uint8Array) {}
+  get secp256k1Signature(): Uint8Array {
+    return this.subarray(0, SECP256K1_SIGNATURE_LENGTH)
+  }
 
-  toU8a(): Uint8Array {
-    return u8aConcat(this.ticket.toU8a(), this.signature)
+  get secp256k1Recovery(): Uint8Array {
+    return this.subarray(SECP256K1_SIGNATURE_LENGTH, SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH)
+  }
+
+  get sr25519PublicKey(): Uint8Array {
+    return this.subarray(
+      SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH,
+      SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH
+    )
+  }
+
+  get sr25519Signature() {
+    return this.onChainSignature
+  }
+
+  get onChainSignature() {
+    return this.subarray(SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH)
+  }
+
+  subarray(begin: number, end?: number) {
+    return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
   }
 }
 
-export { Ticket }
+export class SignedTicket {
+  constructor(public signature: Signature, public ticket: Ticket) {}
 
+  toU8a(): Uint8Array {
+    return u8aConcat(this.signature.onChainSignature, this.ticket.toU8a())
+  }
+}
+
+export class Ticket
+  extends Struct.with({
+    channelId: Hash,
+    challenge: Hash,
+    epoch: TicketEpoch,
+    amount: Balance,
+    winProb: Hash,
+    onChainSecret: Hash
+  })
+  implements ITicket {
+  declare channelId: Hash
+  declare challenge: Hash
+  declare epoch: TicketEpoch
+  declare amount: Balance
+  declare winProb: Hash
+  declare onChainSecret: Hash
+
+  getEmbeddedFunds() {
+    return this.amount.mul(new BN(this.winProb)).div(new BN(new Uint8Array(Hash.length).fill(0xff)))
+  }
+}
 export class State extends Struct.with({
   epoch: TicketEpoch,
   secret: Hash,

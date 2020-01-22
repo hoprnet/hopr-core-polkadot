@@ -2,7 +2,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, AccountId, Channel as ChannelEnum, Hash } from './srml_types'
+import { Types, SRMLTypes, Balance, AccountId, Channel as ChannelEnum, Hash, Signature, Ticket } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import UtilsClass from './utils'
@@ -10,7 +10,6 @@ import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
 import { createTypeUnsafe } from '@polkadot/types'
 import { ChannelOpener } from './channel/open'
-import Ticket from './channel/ticket'
 
 const POLKADOT_URI: string = 'ws://localhost:9944'
 
@@ -126,29 +125,6 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
   utils = Utils
   types = Types
 
-
-  private async openChannel(
-    amount: Balance,
-    signature: Promise<Uint8Array>,
-    counterparty: AccountId
-  ): Promise<ChannelClass> {
-    console.log(this)
-    const channelOpener = await ChannelOpener.create(this, counterparty)
-
-    await channelOpener.increaseFunds(amount)
-    await Promise.all([
-      /* prettier-ignore */
-      channelOpener.onceOpen(),
-      channelOpener.setActive(await signature)
-    ])
-
-    const channel = new ChannelClass(this, counterparty)
-
-    await this.db.put(this.dbKeys.Channel(await channel.channelId), '')
-
-    return channel
-  }
-
   channel = {
     self: this as HoprPolkadotClass,
     async create(counterparty: AccountId): Promise<ChannelClass> {
@@ -158,7 +134,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     },
     async open(
       amount: Balance,
-      signature: Promise<Uint8Array>,
+      signature: Promise<Signature>,
       counterparty: AccountId
     ): Promise<ChannelClass> {
       const channelOpener = await ChannelOpener.create(this.self, counterparty)

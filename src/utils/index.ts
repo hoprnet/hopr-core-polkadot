@@ -1,4 +1,4 @@
-import { AccountId, Hash, Moment } from '../srml_types'
+import { AccountId, Hash, Moment, Signature } from '../srml_types'
 import { ApiPromise } from '@polkadot/api'
 import { u8aConcat } from '@polkadot/util'
 import { sr25519KeypairFromSeed, sr25519Sign, sr25519Verify, blake2b, waitReady } from '@polkadot/wasm-crypto'
@@ -125,10 +125,7 @@ export default class Utils implements IUtils {
     msg: Uint8Array,
     privKey: Uint8Array,
     pubKey: Uint8Array
-  ): Promise<{
-    signature: Uint8Array
-    recovery: number
-  }> {
+  ): Promise<Signature> {
     await waitReady()
 
     if (privKey.length != 32) {
@@ -137,17 +134,19 @@ export default class Utils implements IUtils {
 
     const keyPair = sr25519KeypairFromSeed(privKey)
 
-    const schnorrkelPrivKey = keyPair.subarray(0, 64)
-    const schnorrkelPubKey = keyPair.subarray(64, 96)
+    const schnorrkelPrivateKey = keyPair.subarray(0, 64)
+    const schnorrkelPublicKey = keyPair.subarray(64, 96)
 
-    const signature = secp256k1.sign(Buffer.from(schnorrkelPubKey.slice(0, 32)), Buffer.from(privKey))
+    const signature = secp256k1.sign(Buffer.from(schnorrkelPublicKey.slice(0, 32)), Buffer.from(privKey))
 
-    const schnorrkelSignature = sr25519Sign(schnorrkelPubKey, schnorrkelPrivKey, msg)
+    const schnorrkelSignature = sr25519Sign(schnorrkelPublicKey, schnorrkelPrivateKey, msg)
 
-    return {
-      signature: u8aConcat(signature.signature, schnorrkelPubKey, schnorrkelSignature),
-      recovery: signature.recovery
-    }
+    return new Signature(undefined, {
+      secp256k1Signature: signature.signature,
+      secp256k1Recovery: signature.recovery,
+      sr25519PublicKey: schnorrkelPublicKey,
+      sr25519Signature: schnorrkelSignature
+    })
   }
 
   /**
@@ -158,32 +157,21 @@ export default class Utils implements IUtils {
    */
   async verify(
     msg: Uint8Array,
-    signature: { signature: Uint8Array; recovery: number },
+    signature: Signature,
     pubKey: Uint8Array
   ): Promise<boolean> {
-    if (signature.signature.length != 32 + 64 + 64) {
-      throw Error(
-        `Invalid signature.signature array. Expected a ${Uint8Array.name} of ${32 + 64 + 64} bytes length but got ${
-          signature.signature.length
-        }`
-      )
-    }
     await waitReady()
-
-    const secp256k1Signature = signature.signature.subarray(0, 64)
-    const schnorrkelPubKey = signature.signature.subarray(64, 96)
 
     if (
       !secp256k1
-        .recover(Buffer.from(schnorrkelPubKey), Buffer.from(secp256k1Signature), signature.recovery)
+        .recover(Buffer.from(signature.sr25519PublicKey), Buffer.from(signature.secp256k1Signature), signature.secp256k1Recovery[0])
         .equals(Buffer.from(pubKey))
     ) {
       throw Error('invalid secp256k1 signature.')
     }
 
-    const schnorrkelSignature = signature.signature.subarray(96, 160)
 
-    return sr25519Verify(schnorrkelSignature, msg, schnorrkelPubKey)
+    return sr25519Verify(signature.sr25519Signature, msg, signature.sr25519PublicKey)
   }
 
   /**

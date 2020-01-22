@@ -60,7 +60,7 @@ export class ChannelOpener {
   async setActive(signature: Signature): Promise<ChannelOpener> {
     await Promise.all([
       this.hoprPolkadot.api.tx.hopr
-        .setActive(this.counterparty, signature)
+        .setActive(this.counterparty, signature.onChainSignature)
         .signAndSend(this.hoprPolkadot.self, { nonce: await this.hoprPolkadot.nonce }),
       this.hoprPolkadot.db.put(this.hoprPolkadot.dbKeys.Channel(this.channelId), '')
     ])

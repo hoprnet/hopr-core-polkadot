@@ -1,4 +1,4 @@
-import { Null, u32, u64, u128, H256 } from '@polkadot/types'
+import { Null, u32, u64, u128, H256, TypeRegistry } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
@@ -11,6 +11,7 @@ import { TypeClasses } from '@hoprnet/hopr-core-connector-interface'
 const SECP256K1_SIGNATURE_LENGTH = 64
 const SECP256K1_SIGNATURE_RECOVERY_LENGTH = 1
 const SR25519_PUBLIC_KEY_LENGTH = 32
+const SR25519_SIGNATURE_LENGTH = 64
 const ON_CHAIN_SIGNATURE_OFFSET =
   SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH
 
@@ -140,6 +141,8 @@ export class Signature extends Uint8Array implements TypeClasses.Signature {
       )
     } else if (arr != null && signatures == null) {
       super(arr)
+    } else {
+      throw Error('Invalid constructor arguments.')
     }
   }
 
@@ -169,14 +172,52 @@ export class Signature extends Uint8Array implements TypeClasses.Signature {
   subarray(begin: number, end?: number) {
     return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
   }
+
+  static get LENGTH() {
+    return (
+      SECP256K1_SIGNATURE_LENGTH +
+      SECP256K1_SIGNATURE_RECOVERY_LENGTH +
+      SR25519_PUBLIC_KEY_LENGTH +
+      SR25519_SIGNATURE_LENGTH
+    )
+  }
 }
 
-export class SignedTicket {
-  constructor(public signature: Signature, public ticket: Ticket) {}
-
-  toU8a(): Uint8Array {
-    return u8aConcat(this.signature.onChainSignature, this.ticket.toU8a())
+export class SignedTicket extends Uint8Array implements TypeClasses.SignedTicket {
+  constructor(
+    arr?: Uint8Array,
+    struct?: {
+      signature: Signature
+      ticket: Ticket
+    }
+  ) {
+    if (arr != null && struct == null) {
+      super(arr)
+    } else if (arr == null && struct != null) {
+      super(u8aConcat(struct.signature, struct.ticket.toU8a()))
+    } else {
+      throw Error('Invalid constructor arguments.')
+    }
   }
+
+  subarray(begin: number, end?: number): Uint8Array {
+    return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
+  }
+
+  get ticket(): Ticket {
+    const registry = new TypeRegistry()
+    registry.register(Ticket)
+
+    return new Ticket(registry, this.subarray(Signature.LENGTH))
+  }
+
+  get signature(): Signature {
+    return new Signature(this.subarray(0, Signature.LENGTH))
+  }
+
+  // toU8a(): Uint8Array {
+  //   return u8aConcat(this.signature.onChainSignature, this.ticket.toU8a())
+  // }
 }
 
 export class Ticket

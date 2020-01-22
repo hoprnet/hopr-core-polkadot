@@ -164,7 +164,10 @@ export class ChannelClass implements ChannelClassInterface {
 
       const signature = await this.channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
 
-      return new SignedTicket(signature, ticket)
+      return new SignedTicket(undefined, {
+        signature,
+        ticket
+      })
     },
     async verify(signedTicket: SignedTicket): Promise<boolean> {
       if (
@@ -174,7 +177,7 @@ export class ChannelClass implements ChannelClassInterface {
       }
 
       try {
-        await this.channel.testAndSetNonce(signedTicket.toU8a())
+        await this.channel.testAndSetNonce(signedTicket)
       } catch (_) {
         return false
       }

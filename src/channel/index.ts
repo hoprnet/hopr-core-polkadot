@@ -1,4 +1,4 @@
-import { Hash, Ticket, State, Channel as ChannelEnum, SignedTicket, Signature, Balance } from '../srml_types'
+import { Hash, Ticket, State, Channel as ChannelEnum, SignedTicket, Balance } from '../srml_types'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
@@ -84,12 +84,12 @@ export class ChannelClass implements ChannelClassInterface {
 
   get balance_a(): Promise<Balance> {
     return this.channel.then(channel => {
-      switch (channel.type.toLowerCase()) {
-        case 'funded':
+      switch (channel.type) {
+        case 'Funded':
           return channel.asFunded.balance_a
-        case 'active':
+        case 'Active':
           return channel.asActive.balance_a
-        case 'pendingSettlement':
+        case 'PendingSettlement':
           return channel.asPendingSettlement[0].balance_a
         default:
           throw Error(`Invalid state. Got '${channel.type}'`)
@@ -99,12 +99,12 @@ export class ChannelClass implements ChannelClassInterface {
 
   get balance(): Promise<Balance> {
     return this.channel.then(channel => {
-      switch (channel.type.toLowerCase()) {
-        case 'funded':
+      switch (channel.type) {
+        case 'Funded':
           return channel.asFunded.balance
-        case 'active':
+        case 'Active':
           return channel.asActive.balance
-        case 'pendingSettlement':
+        case 'PendingSettlement':
           return channel.asPendingSettlement[0].balance
         default:
           throw Error(`Invalid state. Got '${channel.type}'`)
@@ -146,17 +146,21 @@ export class ChannelClass implements ChannelClassInterface {
     async create(amount: Balance, challenge: Hash, privKey: Uint8Array, pubKey: Uint8Array): Promise<SignedTicket> {
       const { secret } = await this.channel.hoprPolkadot.api.query.hopr.state<State>(this.channel.counterparty)
 
-      const winProb = createTypeUnsafe<Hash>(this.channel.hoprPolkadot.api.registry, 'Hash', [new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)]) 
+      const winProb = createTypeUnsafe<Hash>(this.channel.hoprPolkadot.api.registry, 'Hash', [
+        new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
+      ])
       const channelId = await this.channel.channelId
 
-      const ticket = createTypeUnsafe<Ticket>(this.channel.hoprPolkadot.api.registry, 'Ticket', [{
-        channelId,
-        epoch: new BN(0),
-        challenge,
-        onChainSecret: secret,
-        amount,
-        winProb
-      }])
+      const ticket = createTypeUnsafe<Ticket>(this.channel.hoprPolkadot.api.registry, 'Ticket', [
+        {
+          channelId,
+          epoch: new BN(0),
+          challenge,
+          onChainSecret: secret,
+          amount,
+          winProb
+        }
+      ])
 
       const signature = await this.channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
 
@@ -175,10 +179,10 @@ export class ChannelClass implements ChannelClassInterface {
         return false
       }
 
-      return await this.channel.hoprPolkadot.utils.verify(
+      return this.channel.hoprPolkadot.utils.verify(
         signedTicket.ticket.toU8a(),
         signedTicket.signature,
-        this.channel.counterparty.toU8a()
+        this.channel.counterparty
       )
     },
     async submit(signedTicket: SignedTicket) {}
@@ -240,12 +244,19 @@ export class ChannelClass implements ChannelClassInterface {
 
   private async testAndSetNonce(signature: Uint8Array): Promise<void> {
     await waitReady()
-    const nonce = blake2b(signature, NONCE_HASH_KEY, 256)
+    const nonce = blake2b(signature, NONCE_HASH_KEY, 32)
 
     const key = this.hoprPolkadot.dbKeys.Nonce(await this.channelId, this.hoprPolkadot.api.createType('Hash', nonce))
 
-    await this.hoprPolkadot.db.get(key).then(_ => {
-      throw Error('Nonces must not be used twice.')
-    })
+    await this.hoprPolkadot.db.get(Buffer.from(key)).then(
+      () => {
+        throw Error('Nonces must not be used twice.')
+      },
+      (err: any) => {
+        if (err.notFound == null || !err.notFound) {
+          throw err
+        }
+      }
+    )
   }
 }

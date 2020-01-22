@@ -19,11 +19,15 @@ import Memdown from 'memdown'
 
 import chalk from 'chalk'
 
+import secp256k1 from 'secp256k1'
+import { randomBytes } from 'crypto'
+
 import config from './config.json'
 
 const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 const FORTY_SECONDS = 40 * 1000
 
+// @TODO: Fix new accounts
 describe('Hopr Polkadot', async function() {
   const path: string = resolve(__dirname, config.polkadotBasepath)
   const binaryPath: string = resolve(path, 'target/debug')
@@ -154,10 +158,13 @@ describe('Hopr Polkadot', async function() {
 
     console.log(chalk.green('Opening channel'))
 
+    const BobsKey = randomBytes(32)
+    const BobsPubKey = secp256k1.publicKeyCreate(BobsKey)
+
     const channelOpener = await hoprAlice.channel.open(
       balance,
-      Promise.resolve(Bob.sign(channelEnum.toU8a())),
-      hoprAlice.api.createType('AccountId', Bob.publicKey)
+      hoprBob.utils.sign(channelEnum.toU8a(), BobsKey, BobsPubKey),
+      await hoprBob.utils.pubKeyToAccountId(BobsPubKey)
     )
 
     console.log('channel opened')

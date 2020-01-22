@@ -64,10 +64,10 @@ export class PendingSettlement extends Tuple.with([ChannelBalance, Moment]) {
 
 export class Channel
   extends Enum.with({
-    uninitialized: Uninitialized,
-    funded: Funded,
-    active: Active,
-    pendingSettlement: PendingSettlement
+    Uninitialized,
+    Funded,
+    Active,
+    PendingSettlement
   })
   implements TypeClasses.Channel {
   declare asUninitialized: Uninitialized

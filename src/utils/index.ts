@@ -5,6 +5,7 @@ import { sr25519KeypairFromSeed, sr25519Sign, sr25519Verify, blake2b, waitReady 
 import secp256k1 from 'secp256k1'
 import chalk from 'chalk'
 import { Utils as IUtils } from '@hoprnet/hopr-core-connector-interface'
+import { createTypeUnsafe, TypeRegistry } from '@polkadot/types'
 
 // const ID_HASH_KEY: Uint8Array = Uint8Array.from(new TextEncoder().encode('ChannelId'))
 
@@ -25,8 +26,11 @@ export default class Utils implements IUtils {
    * @param pubkey public key
    * @param api Polkadot API
    */
-  async pubKeyToAccountId(pubkey: Uint8Array, api: ApiPromise): Promise<AccountId> {
-    return api.createType('AccountId', pubkey)
+  async pubKeyToAccountId(pubkey: Uint8Array): Promise<AccountId> {
+    const registry = new TypeRegistry()
+    registry.register(AccountId)
+
+    return createTypeUnsafe<AccountId>(registry, 'AccountId', [pubkey])
   }
 
   /**
@@ -45,10 +49,13 @@ export default class Utils implements IUtils {
    * @param counterparty AccountId of the counterparty
    */
   async getId(self: AccountId, counterparty: AccountId, api: ApiPromise): Promise<Hash> {
+    const registry = new TypeRegistry()
+    registry.register(Hash)
+
     if (this.isPartyA(self, counterparty)) {
-      return api.createType('Hash', await this.hash(u8aConcat(self, counterparty)))
+      return createTypeUnsafe<Hash>(registry, 'Hash', [await this.hash(u8aConcat(self, counterparty))])
     } else {
-      return api.createType('Hash', await this.hash(u8aConcat(counterparty, self)))
+      return createTypeUnsafe<Hash>(registry, 'Hash', [await this.hash(u8aConcat(counterparty, self))])
     }
   }
   /**
@@ -121,11 +128,7 @@ export default class Utils implements IUtils {
    * @param privKey private key
    * @param pubKey public key
    */
-  async sign(
-    msg: Uint8Array,
-    privKey: Uint8Array,
-    pubKey: Uint8Array
-  ): Promise<Signature> {
+  async sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Array): Promise<Signature> {
     await waitReady()
 
     if (privKey.length != 32) {
@@ -153,24 +156,24 @@ export default class Utils implements IUtils {
    * Verifies a signature by using the native signature algorithm.
    * @param msg message that has been signed
    * @param signature signature to verify
-   * @param pubKey public key of the signer
+   * @param accountId public key of the signer
    */
-  async verify(
-    msg: Uint8Array,
-    signature: Signature,
-    pubKey: Uint8Array
-  ): Promise<boolean> {
+  async verify(msg: Uint8Array, signature: Signature, accountId: AccountId): Promise<boolean> {
     await waitReady()
 
     if (
-      !secp256k1
-        .recover(Buffer.from(signature.sr25519PublicKey), Buffer.from(signature.secp256k1Signature), signature.secp256k1Recovery[0])
-        .equals(Buffer.from(pubKey))
+      !(
+        await this.pubKeyToAccountId(
+          secp256k1.recover(
+            Buffer.from(signature.sr25519PublicKey),
+            Buffer.from(signature.secp256k1Signature),
+            signature.secp256k1Recovery[0]
+          )
+        )
+      ).every((value: number, index: number) => value == accountId[index])
     ) {
       throw Error('invalid secp256k1 signature.')
     }
-
-
     return sr25519Verify(signature.sr25519Signature, msg, signature.sr25519PublicKey)
   }
 

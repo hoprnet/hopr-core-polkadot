@@ -129,16 +129,15 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
     self: this as HoprPolkadotClass,
     async create(counterparty: AccountId): Promise<ChannelClass> {
       let record = await this.self.db.get(this.self.dbKeys.Channel(counterparty))
-  
-      return new ChannelClass(this.self, counterparty, createTypeUnsafe<ChannelEnum>(this.self.api.registry, 'Channel', record))
+
+      return new ChannelClass(
+        this.self,
+        counterparty,
+        createTypeUnsafe<ChannelEnum>(this.self.api.registry, 'Channel', record)
+      )
     },
-    async open(
-      amount: Balance,
-      signature: Promise<Signature>,
-      counterparty: AccountId
-    ): Promise<ChannelClass> {
+    async open(amount: Balance, signature: Promise<Signature>, counterparty: AccountId): Promise<ChannelClass> {
       const channelOpener = await ChannelOpener.create(this.self, counterparty)
-  
 
       await channelOpener.increaseFunds(amount)
       await Promise.all([
@@ -146,11 +145,11 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
         channelOpener.onceOpen(),
         channelOpener.setActive(await signature)
       ])
-  
+
       const channel = new ChannelClass(this.self, counterparty)
-  
-      await this.self.db.put(this.self.dbKeys.Channel(await channel.channelId), '')
-  
+
+      await this.self.db.put(this.self.dbKeys.Channel(counterparty), channel)
+
       return channel
     },
     getAll<T, R>(
@@ -168,9 +167,11 @@ export class HoprPolkadotClass implements HoprCoreConnectorClass {
           .on('error', err => reject(err))
           .on('data', ({ key, value }) => {
             const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
-  
+
             promises.push(
-              Promise.resolve(onData(new ChannelClass(this.self, this.self.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel)))
+              Promise.resolve(
+                onData(new ChannelClass(this.self, this.self.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel))
+              )
             )
           })
           .on('end', () => resolve(onEnd(promises)))

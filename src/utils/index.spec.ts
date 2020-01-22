@@ -23,9 +23,9 @@ describe('test utils', function() {
 
     const signature = await utils.sign(message, secp256k1PrivKey, secp256k1PubKey)
 
-    assert(await utils.verify(message, signature, secp256k1PubKey), `check that signature is verifiable`)
+    assert(await utils.verify(message, signature, await utils.pubKeyToAccountId(secp256k1PubKey)), `check that signature is verifiable`)
 
     message[0] ^= 0xff
-    assert(!(await utils.verify(message, signature, secp256k1PubKey)), `check that manipulated message is not verifiable`)
+    assert(!(await utils.verify(message, signature, await utils.pubKeyToAccountId(secp256k1PubKey))), `check that manipulated message is not verifiable`)
   })
 })

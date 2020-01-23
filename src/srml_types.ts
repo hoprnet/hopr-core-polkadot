@@ -9,6 +9,7 @@ import {
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
 import BN from 'bn.js'
+import secp256k1 from 'secp256k1'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'
 import { Channel as ConcreteChannelInstance } from './channel'
@@ -269,6 +270,10 @@ export class SignedTicket extends Uint8Array implements Types.SignedTicket {
 
   static get SIZE() {
     return Signature.SIZE + Ticket.SIZE
+  }
+
+  get signer() {
+    return secp256k1.recover(Buffer.from(this.ticket.toU8a()), Buffer.from(this.signature.signature), this.signature.recovery)
   }
 
   // toU8a(): Uint8Array {

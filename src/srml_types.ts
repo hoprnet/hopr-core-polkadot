@@ -386,6 +386,7 @@ const SRMLTypes = {
 
 const Types = {
   SignedTicket: SignedTicket,
+  Signature: Signature,
   ...SRMLTypes
 }
 

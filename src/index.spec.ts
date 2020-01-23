@@ -162,6 +162,7 @@ describe('Hopr Polkadot', async function() {
     const BobsPubKey = secp256k1.publicKeyCreate(BobsKey)
 
     const channelOpener = await hoprAlice.channel.open(
+      hoprBob,
       balance,
       hoprBob.utils.sign(channelEnum.toU8a(), BobsKey, BobsPubKey),
       await hoprBob.utils.pubKeyToAccountId(BobsPubKey)

@@ -76,8 +76,8 @@ describe('test ticket generation and verification', function() {
     const preImage = randomBytes(32)
     const hash = await hoprPolkadot.utils.hash(preImage)
 
-    const ticket = await channel.ticket.create(new Balance(registry, 1), new Hash(registry, hash), privKey, pubKey)
+    const ticket = await channel.ticket.create(channel, new Balance(registry, 1), new Hash(registry, hash), privKey, pubKey)
 
-    assert(await channel.ticket.verify(ticket))
+    assert(await channel.ticket.verify(channel, ticket))
   })
 })

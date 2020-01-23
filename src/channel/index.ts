@@ -1,24 +1,22 @@
-import { Hash, Ticket, State, Channel as ChannelEnum, SignedTicket, Balance } from '../srml_types'
+import { Hash, Ticket, Channel as ChannelEnum, Balance, Signature } from '../srml_types'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
+import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
 
 import { HoprPolkadotClass } from '..'
-import BN from 'bn.js'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
-const WIN_PROB = new BN(1)
+import { ChannelInstance } from '@hoprnet/hopr-core-connector-interface'
 
-import { ChannelClass as ChannelClassInterface } from '@hoprnet/hopr-core-connector-interface'
-
-export class ChannelClass implements ChannelClassInterface {
+export class Channel implements ChannelInstance {
   private _channel?: ChannelEnum
   private _settlementWindow?: Moment
   private _channelId?: Hash
 
-  constructor(private hoprPolkadot: HoprPolkadotClass, private counterparty: AccountId, channel?: ChannelEnum) {
+  constructor(public hoprPolkadot: HoprPolkadotClass, public counterparty: AccountId, channel?: ChannelEnum) {
     if (channel != null) {
       this._channel = channel
     }
@@ -141,59 +139,7 @@ export class ChannelClass implements ChannelClassInterface {
     })
   }
 
-  ticket = {
-    channel: this as ChannelClass,
-    async create(amount: Balance, challenge: Hash, privKey: Uint8Array, pubKey: Uint8Array): Promise<SignedTicket> {
-      const { secret } = await this.channel.hoprPolkadot.api.query.hopr.state<State>(this.channel.counterparty)
-
-      const winProb = createTypeUnsafe<Hash>(this.channel.hoprPolkadot.api.registry, 'Hash', [
-        new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
-      ])
-      const channelId = await this.channel.channelId
-
-      const ticket = createTypeUnsafe<Ticket>(this.channel.hoprPolkadot.api.registry, 'Ticket', [
-        {
-          channelId,
-          epoch: new BN(0),
-          challenge,
-          onChainSecret: secret,
-          amount,
-          winProb
-        }
-      ])
-
-      const signature = await this.channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
-
-      return new SignedTicket(undefined, {
-        signature,
-        ticket
-      })
-    },
-    async verify(signedTicket: SignedTicket): Promise<boolean> {
-      if (
-        (await this.channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await this.channel.balance)
-      ) {
-        return false
-      }
-
-      try {
-        await this.channel.testAndSetNonce(signedTicket)
-      } catch (_) {
-        return false
-      }
-
-      return this.channel.hoprPolkadot.utils.verify(
-        signedTicket.ticket.toU8a(),
-        signedTicket.signature,
-        this.channel.counterparty
-      )
-    },
-    async submit(signedTicket: SignedTicket) {}
-    // async aggregate(tickets: Ticket[]): Promise<Ticket> {
-    //   throw Error('not implemented')
-    //   return Promise.resolve(tickets[0])
-    // }
-  }
+  ticket = Ticket
 
   async initiateSettlement(): Promise<void> {
     let channelSettler: ChannelSettler
@@ -245,7 +191,76 @@ export class ChannelClass implements ChannelClassInterface {
     })
   }
 
-  private async testAndSetNonce(signature: Uint8Array): Promise<void> {
+  static async create(hoprPolkadot: HoprPolkadotClass, counterparty: AccountId): Promise<Channel> {
+    let record = await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty))
+
+    return new Channel(
+      hoprPolkadot,
+      counterparty,
+      createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', record)
+    )
+  }
+
+  static async open(
+    hoprPolkadot: HoprPolkadotClass,
+    amount: Balance,
+    signature: Promise<Signature>,
+    counterparty: AccountId
+  ): Promise<Channel> {
+    const channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty)
+
+    await channelOpener.increaseFunds(amount)
+    await Promise.all([
+      /* prettier-ignore */
+      channelOpener.onceOpen(),
+      channelOpener.setActive(await signature)
+    ])
+
+    const channel = new Channel(hoprPolkadot, counterparty)
+
+    await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), channel)
+
+    return channel
+  }
+
+  static getAll<T, R>(
+    hoprPolkadot: HoprPolkadotClass,
+    onData: (channel: Channel) => T,
+    onEnd: (promises: Promise<T>[]) => R
+  ): Promise<R> {
+    const promises: Promise<T>[] = []
+    return new Promise<R>((resolve, reject) => {
+      hoprPolkadot.db
+        .createReadStream({
+          gt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))),
+          lt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
+        })
+        .on('error', err => reject(err))
+        .on('data', ({ key, value }) => {
+          const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
+
+          promises.push(
+            Promise.resolve(
+              onData(new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel))
+            )
+          )
+        })
+        .on('end', () => resolve(onEnd(promises)))
+    })
+  }
+  static async closeChannels(hoprPolkadot: HoprPolkadotClass): Promise<Balance> {
+    return Channel.getAll(
+      hoprPolkadot,
+      (channel: Channel) => {
+        channel.initiateSettlement()
+      },
+      async (promises: Promise<void>[]) => {
+        return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
+      }
+    )
+  }
+
+  async testAndSetNonce(signature: Uint8Array): Promise<void> {
     await waitReady()
     const nonce = blake2b(signature, NONCE_HASH_KEY, 32)
 

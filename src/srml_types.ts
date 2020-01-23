@@ -1,28 +1,67 @@
 import { Null, u32, u64, u128, H256, TypeRegistry } from '@polkadot/types'
 import { Registry } from '@polkadot/types/types'
+import {
+  AccountId as IAccountId,
+  Balance as IBalance,
+  Hash as IHash,
+  Moment as IMoment
+} from '@polkadot/types/interfaces'
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { u8aConcat } from '@polkadot/util'
 import BN from 'bn.js'
 
-import { Ticket as ITicket } from '@hoprnet/hopr-core-connector-interface'
+import { Types } from '@hoprnet/hopr-core-connector-interface'
+import { Channel as ConcreteChannelInstance } from './channel'
 
-import { TypeClasses } from '@hoprnet/hopr-core-connector-interface'
+import { createTypeUnsafe } from '@polkadot/types'
+
+const WIN_PROB = new BN(1)
 
 const SECP256K1_SIGNATURE_LENGTH = 64
 const SECP256K1_SIGNATURE_RECOVERY_LENGTH = 1
 const SR25519_PUBLIC_KEY_LENGTH = 32
 const SR25519_SIGNATURE_LENGTH = 64
-const ON_CHAIN_SIGNATURE_OFFSET =
-  SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH
 
-export class Balance extends u128 implements TypeClasses.Balance {}
-export class Moment extends u64 implements TypeClasses.Moment {}
-export class Hash extends H256 implements TypeClasses.Hash {}
-export class Public extends H256 {}
-export class AccountId extends Public implements TypeClasses.AccountId {}
-export class TicketEpoch extends u32 {}
-export class ChannelId extends H256 {}
-export class PreImage extends H256 {}
+export class Balance extends u128 implements Types.Balance, IBalance {
+  static get SIZE(): number {
+    return 16
+  }
+}
+export class Moment extends u64 implements Types.Moment, IMoment {
+  static get SIZE(): number {
+    return 8
+  }
+}
+export class Hash extends H256 implements Types.Hash, IHash {
+  static get SIZE(): number {
+    return 32
+  }
+}
+export class Public extends H256 {
+  static get SIZE(): number {
+    return 32
+  }
+}
+export class AccountId extends Public implements Types.AccountId, IAccountId {
+  static get SIZE(): number {
+    return 32
+  }
+}
+export class TicketEpoch extends u32 implements Types.TicketEpoch {
+  static get SIZE(): number {
+    return 32
+  }
+}
+export class ChannelId extends H256 implements IHash {
+  static get SIZE(): number {
+    return 32
+  }
+}
+export class PreImage extends H256 implements IHash {
+  static get SIZE(): number {
+    return 32
+  }
+}
 
 export class ChannelBalance extends Struct.with({
   balance: Balance,
@@ -70,7 +109,7 @@ export class Channel
     Active,
     PendingSettlement
   })
-  implements TypeClasses.Channel {
+  implements Types.Channel {
   declare asUninitialized: Uninitialized
   declare asFunded: Funded
   declare asActive: Active
@@ -118,9 +157,14 @@ export class Channel
     str += this.value.toString()
     return str
   }
+
+  static get SIZE(): number {
+    throw Error('not implemented')
+    return 0
+  }
 }
 
-export class Signature extends Uint8Array implements TypeClasses.Signature {
+export class Signature extends Uint8Array implements Types.Signature {
   constructor(
     arr?: Uint8Array,
     signatures?: {
@@ -162,18 +206,26 @@ export class Signature extends Uint8Array implements TypeClasses.Signature {
   }
 
   get sr25519Signature() {
-    return this.onChainSignature
+    return this.subarray(SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH)
+  }
+
+  get signature() {
+    return this.secp256k1Signature
+  }
+
+  get recovery() {
+    return this.secp256k1Recovery[0]
   }
 
   get onChainSignature() {
-    return this.subarray(SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH)
+    return this.sr25519Signature
   }
 
   subarray(begin: number, end?: number) {
     return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
   }
 
-  static get LENGTH() {
+  static get SIZE() {
     return (
       SECP256K1_SIGNATURE_LENGTH +
       SECP256K1_SIGNATURE_RECOVERY_LENGTH +
@@ -183,7 +235,7 @@ export class Signature extends Uint8Array implements TypeClasses.Signature {
   }
 }
 
-export class SignedTicket extends Uint8Array implements TypeClasses.SignedTicket {
+export class SignedTicket extends Uint8Array implements Types.SignedTicket {
   constructor(
     arr?: Uint8Array,
     struct?: {
@@ -208,11 +260,15 @@ export class SignedTicket extends Uint8Array implements TypeClasses.SignedTicket
     const registry = new TypeRegistry()
     registry.register(Ticket)
 
-    return new Ticket(registry, this.subarray(Signature.LENGTH))
+    return new Ticket(registry, this.subarray(Signature.SIZE))
   }
 
   get signature(): Signature {
-    return new Signature(this.subarray(0, Signature.LENGTH))
+    return new Signature(this.subarray(0, Signature.SIZE))
+  }
+
+  static get SIZE() {
+    return Signature.SIZE + Ticket.SIZE
   }
 
   // toU8a(): Uint8Array {
@@ -229,7 +285,7 @@ export class Ticket
     winProb: Hash,
     onChainSecret: Hash
   })
-  implements ITicket {
+  implements Types.Ticket {
   declare channelId: Hash
   declare challenge: Hash
   declare epoch: TicketEpoch
@@ -240,7 +296,64 @@ export class Ticket
   getEmbeddedFunds() {
     return this.amount.mul(new BN(this.winProb)).div(new BN(new Uint8Array(Hash.length).fill(0xff)))
   }
+
+  static get SIZE(): number {
+    return Hash.SIZE + Hash.SIZE + TicketEpoch.SIZE + Balance.SIZE + Hash.SIZE + Hash.SIZE
+  }
+
+  static async create(channel: ConcreteChannelInstance, amount: Balance, challenge: Hash, privKey: Uint8Array, pubKey: Uint8Array): Promise<SignedTicket> {
+      const { secret } = await channel.hoprPolkadot.api.query.hopr.state<State>(channel.counterparty)
+
+      const winProb = createTypeUnsafe<Hash>(channel.hoprPolkadot.api.registry, 'Hash', [
+        new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
+      ])
+      const channelId = await channel.channelId
+
+      const ticket = createTypeUnsafe<Ticket>(channel.hoprPolkadot.api.registry, 'Ticket', [
+        {
+          channelId,
+          epoch: new BN(0),
+          challenge,
+          onChainSecret: secret,
+          amount,
+          winProb
+        }
+      ])
+
+      const signature = await channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
+
+      return new SignedTicket(undefined, {
+        signature,
+        ticket
+      })
+    }
+
+  static async verify(channel: ConcreteChannelInstance, signedTicket: SignedTicket): Promise<boolean> {
+      if (
+        (await channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await channel.balance)
+      ) {
+        return false
+      }
+
+      try {
+        await channel.testAndSetNonce(signedTicket)
+      } catch (_) {
+        return false
+      }
+
+      return channel.hoprPolkadot.utils.verify(
+        signedTicket.ticket.toU8a(),
+        signedTicket.signature,
+        channel.counterparty
+      )
+    }
+  static async submit(channel: ConcreteChannelInstance, signedTicket: SignedTicket) {}
+    // async aggregate(tickets: Ticket[]): Promise<Ticket> {
+    //   throw Error('not implemented')
+    //   return Promise.resolve(tickets[0])
+    // }
 }
+
 export class State extends Struct.with({
   epoch: TicketEpoch,
   secret: Hash,
@@ -249,6 +362,10 @@ export class State extends Struct.with({
   declare secret: Hash
   declare pubkey: Public
   declare epoch: TicketEpoch
+
+  static get SIZE(): number {
+    return Hash.SIZE + Public.SIZE + TicketEpoch.SIZE
+  }
 }
 
 const SRMLTypes = {

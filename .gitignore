@@ -4,6 +4,9 @@ lib/
 # Exclude node.js stuff
 node_modules/
 
+# Exclude keys
+.env
+
 # Exclude IDE stuff
 # .vscode/
 

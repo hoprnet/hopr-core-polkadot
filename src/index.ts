@@ -1,8 +1,10 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
+import { u8aToHex } from '@polkadot/util'
+import Keyring from '@polkadot/keyring'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, AccountId, Channel as ChannelEnum, Hash, Signature, Ticket } from './srml_types'
+import { Types, SRMLTypes, Balance, AccountId, Ticket } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import UtilsClass from './utils'
@@ -19,7 +21,7 @@ const Utils = new UtilsClass()
 const DbKeys = new DbKeysClass()
 const Constants = new ConstantsClass()
 
-export { Utils, DbKeys, Constants, Channel as Channel, Types, Ticket }
+export { Utils, DbKeys, Constants, Channel, Types, Ticket }
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -27,13 +29,19 @@ export type HoprPolkadotProps = {
   db: LevelUp
 }
 
-export class HoprPolkadotClass implements HoprCoreConnectorInstance {
+export type HoprKeyPair = {
+  privateKey: Uint8Array
+  publicKey: Uint8Array
+  keyPair: KeyringPair
+}
+
+export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
   private _started: boolean = false
   private _nonce?: number
 
   eventSubscriptions: EventSignalling
 
-  constructor(public api: ApiPromise, public self: KeyringPair, public db: LevelUp) {
+  constructor(public api: ApiPromise, public self: HoprKeyPair, public db: LevelUp) {
     this.eventSubscriptions = new EventSignalling(this.api)
   }
 
@@ -56,7 +64,7 @@ export class HoprPolkadotClass implements HoprCoreConnectorInstance {
 
     return new Promise<number>(async (resolve, reject) => {
       try {
-        this._nonce = (await this.api.query.system.accountNonce(this.self.publicKey)).toNumber()
+        this._nonce = (await this.api.query.system.accountNonce(this.self.keyPair.publicKey)).toNumber()
       } catch (err) {
         return reject(err)
       }
@@ -90,13 +98,13 @@ export class HoprPolkadotClass implements HoprCoreConnectorInstance {
     }
 
     await this.api.tx.hopr
-      .init(this.api.createType('Hash', this.self.publicKey), secret)
-      .signAndSend(this.self, { nonce: nonce || (await this.nonce) })
+      .init(this.api.createType('Hash', this.self.keyPair.publicKey), secret)
+      .signAndSend(this.self.keyPair, { nonce: nonce != null ? nonce : await this.nonce })
   }
 
   async checkFreeBalance(newBalance: Balance): Promise<void> {
     const balance: Balance = await this.api.query.balances.freeBalance<Balance>(
-      this.api.createType('AccountId', this.self.publicKey)
+      this.api.createType('AccountId', this.self.keyPair.publicKey)
     )
 
     if (balance.lt(newBalance))
@@ -114,10 +122,10 @@ export class HoprPolkadotClass implements HoprCoreConnectorInstance {
   }
 
   async getAccountBalance(): Promise<Balance> {
-    return this.api.query.balances.freeBalance<Balance>(this.self.publicKey)
+    return this.api.query.balances.freeBalance<Balance>(this.self.keyPair.publicKey)
   }
   async transfer(to: AccountId, amount: Balance): Promise<void> {
-    this.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this.self)
+    this.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this.self.keyPair)
   }
 
   utils = Utils
@@ -128,22 +136,34 @@ export class HoprPolkadotClass implements HoprCoreConnectorInstance {
   dbKeys = DbKeys
 
   constants = Constants
-}
 
-const HoprPolkadot = {
   /**
    * Creates an uninitialised instance.
    *
-   * @param db database instance
+   * @param db database instance, e.g. `ws://localhost:9944`
+   * @param keyPair privKey and publicKey of this node
    */
-  async create(db: LevelUp, keyPair: KeyringPair, uri: string = POLKADOT_URI): Promise<HoprPolkadotClass> {
+  static async create(
+    db: LevelUp,
+    keyPair: {
+      publicKey: Uint8Array
+      privateKey: Uint8Array
+    },
+    uri: string = POLKADOT_URI
+  ): Promise<HoprPolkadotClass> {
     const api = await ApiPromise.create({
       provider: new WsProvider(uri),
       types: SRMLTypes
     })
 
-    return new HoprPolkadotClass(api, keyPair, db)
+    const kPair = new Keyring({ type: 'sr25519' }).addFromSeed(keyPair.privateKey, undefined, 'sr25519')
+    const hoprKeyPair = {
+      ...keyPair,
+      keyPair: kPair
+    }
+
+    console.log(`pubKey`, u8aToHex(kPair.publicKey))
+
+    return new HoprPolkadotClass(api, hoprKeyPair, db)
   }
 }
-
-export default HoprPolkadot

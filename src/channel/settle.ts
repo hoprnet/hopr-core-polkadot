@@ -1,10 +1,10 @@
 import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } from '../srml_types'
 import { PushedBackSettlement } from '../events'
 import { Event } from '@polkadot/types/interfaces'
-import { HoprPolkadotClass } from '..'
+import HoprPolkadot from '..'
 
 type ChannelSettlerProps = {
-  hoprPolkadot: HoprPolkadotClass
+  hoprPolkadot: HoprPolkadot
   counterparty: AccountId
   channelId: Hash
   settlementWindow: Moment
@@ -72,7 +72,7 @@ export class ChannelSettler {
   async init(): Promise<ChannelSettler> {
     this.props.hoprPolkadot.api.tx.hopr
       .initiateSettlement(this.props.counterparty)
-      .signAndSend(this.props.hoprPolkadot.self, { nonce: await this.props.hoprPolkadot.nonce })
+      .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
 
     const unsubscribe = this.props.hoprPolkadot.eventSubscriptions.on(
       PushedBackSettlement(this.props.channelId),
@@ -118,7 +118,7 @@ export class ChannelSettler {
   async withdraw(): Promise<void> {
     await this.props.hoprPolkadot.api.tx.hopr
       .withdraw(this.props.counterparty)
-      .signAndSend(this.props.hoprPolkadot.self, { nonce: await this.props.hoprPolkadot.nonce })
+      .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
 
     console.log('withdrawn')
   }

@@ -1,7 +1,8 @@
 import { AccountId, Hash, Moment, Signature } from '../srml_types'
 import { ApiPromise } from '@polkadot/api'
 import { u8aConcat } from '@polkadot/util'
-import { sr25519KeypairFromSeed, sr25519Sign, sr25519Verify, blake2b, waitReady } from '@polkadot/wasm-crypto'
+import KeyRing from '@polkadot/keyring'
+import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import secp256k1 from 'secp256k1'
 import chalk from 'chalk'
 import { Utils as IUtils } from '@hoprnet/hopr-core-connector-interface'
@@ -135,20 +136,17 @@ export default class Utils implements IUtils {
       throw Error(`invalid argument. Expected a ${Uint8Array.name} of size 32 bytes but got only ${privKey.length}`)
     }
 
-    const keyPair = sr25519KeypairFromSeed(privKey)
+    const keyPair = new KeyRing({ type: 'sr25519' }).addFromSeed(privKey)
 
-    const schnorrkelPrivateKey = keyPair.subarray(0, 64)
-    const schnorrkelPublicKey = keyPair.subarray(64, 96)
+    // console.log(u8aToHex(keyPair.publicKey))
 
-    const signature = secp256k1.sign(Buffer.from(schnorrkelPublicKey.slice(0, 32)), Buffer.from(privKey))
-
-    const schnorrkelSignature = sr25519Sign(schnorrkelPublicKey, schnorrkelPrivateKey, msg)
+    const signature = secp256k1.sign(Buffer.from(keyPair.publicKey), Buffer.from(privKey))
 
     return new Signature(undefined, {
       secp256k1Signature: signature.signature,
       secp256k1Recovery: signature.recovery,
-      sr25519PublicKey: schnorrkelPublicKey,
-      sr25519Signature: schnorrkelSignature
+      sr25519PublicKey: keyPair.publicKey,
+      sr25519Signature: keyPair.sign(msg)
     })
   }
 
@@ -174,7 +172,10 @@ export default class Utils implements IUtils {
     ) {
       throw Error('invalid secp256k1 signature.')
     }
-    return sr25519Verify(signature.sr25519Signature, msg, signature.sr25519PublicKey)
+
+    return new KeyRing({ type: 'sr25519' })
+      .addFromAddress(signature.sr25519PublicKey)
+      .verify(msg, signature.sr25519Signature)
   }
 
   /**

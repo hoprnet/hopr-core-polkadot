@@ -185,7 +185,7 @@ export class Signature extends Uint8Array implements Types.Signature {
         )
       )
     } else if (arr != null && signatures == null) {
-      super(arr)
+      super(arr.buffer)
     } else {
       throw Error('Invalid constructor arguments.')
     }
@@ -207,11 +207,21 @@ export class Signature extends Uint8Array implements Types.Signature {
   }
 
   get sr25519Signature() {
-    return this.subarray(SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH)
+    return this.subarray(
+      SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH,
+      SECP256K1_SIGNATURE_LENGTH +
+        SECP256K1_SIGNATURE_RECOVERY_LENGTH +
+        SR25519_PUBLIC_KEY_LENGTH +
+        SR25519_SIGNATURE_LENGTH
+    )
   }
 
   get signature() {
     return this.secp256k1Signature
+  }
+
+  get msgPrefix() {
+    return this.sr25519PublicKey
   }
 
   get recovery() {
@@ -273,7 +283,11 @@ export class SignedTicket extends Uint8Array implements Types.SignedTicket {
   }
 
   get signer() {
-    return secp256k1.recover(Buffer.from(this.ticket.toU8a()), Buffer.from(this.signature.signature), this.signature.recovery)
+    return secp256k1.recover(
+      Buffer.from(this.ticket.toU8a()),
+      Buffer.from(this.signature.signature),
+      this.signature.recovery
+    )
   }
 
   // toU8a(): Uint8Array {
@@ -306,57 +320,56 @@ export class Ticket
     return Hash.SIZE + Hash.SIZE + TicketEpoch.SIZE + Balance.SIZE + Hash.SIZE + Hash.SIZE
   }
 
-  static async create(channel: ConcreteChannelInstance, amount: Balance, challenge: Hash, privKey: Uint8Array, pubKey: Uint8Array): Promise<SignedTicket> {
-      const { secret } = await channel.hoprPolkadot.api.query.hopr.state<State>(channel.counterparty)
+  static async create(
+    channel: ConcreteChannelInstance,
+    amount: Balance,
+    challenge: Hash,
+    privKey: Uint8Array,
+    pubKey: Uint8Array
+  ): Promise<SignedTicket> {
+    const { secret } = await channel.hoprPolkadot.api.query.hopr.state<State>(channel.counterparty)
 
-      const winProb = createTypeUnsafe<Hash>(channel.hoprPolkadot.api.registry, 'Hash', [
-        new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
-      ])
-      const channelId = await channel.channelId
+    const winProb = createTypeUnsafe<Hash>(channel.hoprPolkadot.api.registry, 'Hash', [
+      new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
+    ])
+    const channelId = await channel.channelId
 
-      const ticket = createTypeUnsafe<Ticket>(channel.hoprPolkadot.api.registry, 'Ticket', [
-        {
-          channelId,
-          epoch: new BN(0),
-          challenge,
-          onChainSecret: secret,
-          amount,
-          winProb
-        }
-      ])
+    const ticket = createTypeUnsafe<Ticket>(channel.hoprPolkadot.api.registry, 'Ticket', [
+      {
+        channelId,
+        epoch: new BN(0),
+        challenge,
+        onChainSecret: secret,
+        amount,
+        winProb
+      }
+    ])
 
-      const signature = await channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
+    const signature = await channel.hoprPolkadot.utils.sign(ticket.toU8a(), privKey, pubKey)
 
-      return new SignedTicket(undefined, {
-        signature,
-        ticket
-      })
-    }
+    return new SignedTicket(undefined, {
+      signature,
+      ticket
+    })
+  }
 
   static async verify(channel: ConcreteChannelInstance, signedTicket: SignedTicket): Promise<boolean> {
-      if (
-        (await channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await channel.balance)
-      ) {
-        return false
-      }
-
-      try {
-        await channel.testAndSetNonce(signedTicket)
-      } catch (_) {
-        return false
-      }
-
-      return channel.hoprPolkadot.utils.verify(
-        signedTicket.ticket.toU8a(),
-        signedTicket.signature,
-        channel.counterparty
-      )
+    if ((await channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await channel.balance)) {
+      return false
     }
+
+    try {
+      await channel.testAndSetNonce(signedTicket)
+    } catch (_) {
+      return false
+    }
+    return channel.hoprPolkadot.utils.verify(signedTicket.ticket.toU8a(), signedTicket.signature, channel.counterparty)
+  }
   static async submit(channel: ConcreteChannelInstance, signedTicket: SignedTicket) {}
-    // async aggregate(tickets: Ticket[]): Promise<Ticket> {
-    //   throw Error('not implemented')
-    //   return Promise.resolve(tickets[0])
-    // }
+  // async aggregate(tickets: Ticket[]): Promise<Ticket> {
+  //   throw Error('not implemented')
+  //   return Promise.resolve(tickets[0])
+  // }
 }
 
 export class State extends Struct.with({

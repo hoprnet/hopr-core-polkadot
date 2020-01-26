@@ -13,13 +13,15 @@ import {
   Ticket
 } from '../srml_types'
 import { TypeRegistry, createType } from '@polkadot/types'
-import { HoprPolkadotClass, Channel } from '..'
+import HoprPolkadot, { Channel } from '..'
 import { randomBytes } from 'crypto'
 import secp256k1 from 'secp256k1'
 import BN from 'bn.js'
 import { createTypeUnsafe } from '@polkadot/types'
 import LevelUp from 'levelup'
 import DbKeys from '../dbKeys'
+import Keyring from '@polkadot/keyring'
+import { waitReady } from '@polkadot/wasm-crypto'
 
 describe('test ticket generation and verification', function() {
   it('should create a valid ticket', async function() {
@@ -29,6 +31,8 @@ describe('test ticket generation and verification', function() {
 
     const privKey = randomBytes(32)
     const pubKey = secp256k1.publicKeyCreate(privKey)
+
+    await waitReady()
 
     const hoprPolkadot = ({
       utils: new Utils(),
@@ -47,10 +51,12 @@ describe('test ticket generation and verification', function() {
         createType: (type: any, ...params: any[]) => createType(registry, type, ...params)
       },
       self: {
-        publicKey: pubKey
+        publicKey: pubKey,
+        keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privKey, undefined, 'sr25519')
+
       },
       dbKeys: new DbKeys()
-    } as unknown) as HoprPolkadotClass
+    } as unknown) as HoprPolkadot
 
     const counterparty = new AccountId(hoprPolkadot.api.registry, pubKey)
 

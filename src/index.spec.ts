@@ -1,15 +1,17 @@
-import HoprPolkadot, { HoprPolkadotClass } from '.'
+require('dotenv').config()
+import assert from 'assert'
+
+import HoprPolkadot from '.'
+import secp256k1 from 'secp256k1'
 
 import { spawn, ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
 import { resolve } from 'path'
 
 import { cryptoWaitReady } from '@polkadot/util-crypto'
-import { Keyring } from '@polkadot/api'
-import { KeyringPair } from '@polkadot/keyring/types'
 import { createTypeUnsafe } from '@polkadot/types'
 
-import { Channel as ChannelEnum, Funded, ChannelBalance, Moment } from './srml_types'
+import { Channel as ChannelEnum, Funded, ChannelBalance, State } from './srml_types'
 
 import UtilsClass from './utils'
 const Utils = new UtilsClass()
@@ -18,28 +20,27 @@ import LevelUp from 'levelup'
 import Memdown from 'memdown'
 
 import chalk from 'chalk'
-
-import secp256k1 from 'secp256k1'
-import { randomBytes } from 'crypto'
-
 import config from './config.json'
 
 const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 const FORTY_SECONDS = 40 * 1000
+
+type KeyPair = {
+  privateKey: Uint8Array
+  publicKey: Uint8Array
+}
 
 // @TODO: Fix new accounts
 describe('Hopr Polkadot', async function() {
   const path: string = resolve(__dirname, config.polkadotBasepath)
   const binaryPath: string = resolve(path, 'target/debug')
 
-  let keys: Keyring
-
-  let Alice: KeyringPair
-  let Bob: KeyringPair
+  let Alice: KeyPair
+  let Bob: KeyPair
 
   let polkadotNode: ChildProcess
 
-  let hoprAlice: HoprPolkadotClass, hoprBob: HoprPolkadotClass
+  let hoprAlice: HoprPolkadot, hoprBob: HoprPolkadot
 
   before(async function() {
     this.timeout(TWENTY_MINUTES)
@@ -61,9 +62,29 @@ describe('Hopr Polkadot', async function() {
 
     await cryptoWaitReady()
 
-    keys = new Keyring({ type: 'sr25519' })
-    Alice = keys.createFromUri('//Alice')
-    Bob = keys.createFromUri('//Bob')
+    
+    if (process.env[`DEMO_ACCOUNT_0_PRIVATE_KEY`] == null) {
+      throw Error(`Could not read private key from 'DEMO_ACCOUNT_0_PRIVATE_KEY'`)
+    }
+    const AlicesPrivateKey = Buffer.from(process.env[`DEMO_ACCOUNT_0_PRIVATE_KEY`].replace(/0x/, ''), 'hex')
+
+    if (process.env[`DEMO_ACCOUNT_1_PRIVATE_KEY`] == null) {
+      throw Error(`Could not read private key from 'DEMO_ACCOUNT_1_PRIVATE_KEY'`)
+    }
+    const BobsPrivateKey = Buffer.from(process.env[`DEMO_ACCOUNT_1_PRIVATE_KEY`].replace(/0x/, ''), 'hex')
+
+    const AlicesPublicKey = secp256k1.publicKeyCreate(AlicesPrivateKey)
+    const BobsPublicKey = secp256k1.publicKeyCreate(BobsPrivateKey)
+
+    Bob = {
+      privateKey: BobsPrivateKey,
+      publicKey: BobsPublicKey
+    }
+
+    Alice = {
+      privateKey: AlicesPrivateKey,
+      publicKey: AlicesPublicKey
+    }
   })
 
   beforeEach(async function() {
@@ -106,30 +127,58 @@ describe('Hopr Polkadot', async function() {
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
-            Alice.publicKey,
+            hoprAlice.self.keyPair.publicKey,
             hoprAlice.api.createType('Balance', 1234567),
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(Alice, { nonce: second }),
+        .signAndSend(hoprAlice.self.keyPair, { nonce: second }),
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
-            Bob.publicKey,
+            hoprBob.self.keyPair.publicKey,
             hoprAlice.api.createType('Balance', 1234567),
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(Alice, { nonce: third })
+        .signAndSend(hoprAlice.self.keyPair, { nonce: third })
     ])
 
     await Utils.waitForNextBlock(hoprAlice.api)
+    await Utils.waitForNextBlock(hoprAlice.api)
 
-    await hoprAlice.api.tx.balances.transfer(Bob.publicKey, 123).signAndSend(Alice)
+    assert.deepEqual(
+      hoprAlice.self.keyPair.publicKey.subarray(4, 32),
+      (
+        await hoprAlice.api.query.hopr.states<State>(
+          hoprBob.api.createType('AccountId', hoprAlice.self.keyPair.publicKey)
+        )
+      ).pubkey
+        .toU8a()
+        .subarray(0, 28),
+      `check that the Alice's pubkey has made its way into the on-chain logic`
+    )
+
+    assert.deepEqual(
+      hoprBob.self.keyPair.publicKey.subarray(4, 32),
+      (
+        await hoprBob.api.query.hopr.states<State>(hoprBob.api.createType('AccountId', hoprBob.self.keyPair.publicKey))
+      ).pubkey
+        .toU8a()
+        .subarray(0, 28),
+      `check that the Bobs pubkey has made its way into the on-chain logic`
+    )
+
+    await hoprAlice.api.tx.balances
+      .transfer(
+        hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey),
+        hoprAlice.api.createType('Balance', 123).toU8a()
+      )
+      .signAndSend(hoprAlice.self.keyPair, { nonce: await hoprAlice.nonce })
 
     console.log(
       `Alice's new balance '${chalk.green(
-        (await hoprAlice.api.query.balances.freeBalance(Alice.publicKey)).toString()
+        (await hoprAlice.api.query.balances.freeBalance(hoprAlice.self.keyPair.publicKey)).toString()
       )}'`
     )
   })
@@ -150,7 +199,7 @@ describe('Hopr Polkadot', async function() {
         createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [
           {
             balance,
-            balanceA: balance
+            balance_a: balance
           }
         ])
       ])
@@ -158,21 +207,27 @@ describe('Hopr Polkadot', async function() {
 
     console.log(chalk.green('Opening channel'))
 
-    const BobsKey = randomBytes(32)
-    const BobsPubKey = secp256k1.publicKeyCreate(BobsKey)
-
-    const channelOpener = await hoprAlice.channel.open(
-      hoprBob,
-      balance,
-      hoprBob.utils.sign(channelEnum.toU8a(), BobsKey, BobsPubKey),
-      await hoprBob.utils.pubKeyToAccountId(BobsPubKey)
+    assert(
+      await hoprAlice.utils.verify(
+        channelEnum.toU8a(),
+        await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey),
+        hoprBob.api.createType('AccountId', hoprBob.self.publicKey)
+      ),
+      `check that we got a valid signature over the channel state`
     )
 
-    console.log('channel opened')
+    const channelOpener = await hoprAlice.channel.open(
+      hoprAlice,
+      balance,
+      hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey),
+      await hoprBob.utils.pubKeyToAccountId(hoprBob.self.keyPair.publicKey)
+    )
+
+    console.log(chalk.green('channel opened'))
 
     const channelId = await Utils.getId(
-      hoprAlice.api.createType('AccountId', Alice.publicKey),
-      hoprAlice.api.createType('AccountId', Bob.publicKey),
+      hoprAlice.api.createType('AccountId', hoprAlice.self.keyPair.publicKey),
+      hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey),
       hoprAlice.api
     )
 
@@ -185,6 +240,9 @@ describe('Hopr Polkadot', async function() {
     await Utils.waitForNextBlock(hoprAlice.api)
 
     channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
-    console.log(`Channel '${channel.toString()}`)
+
+    assert(channel.type == 'Uninitialized', `Channel should be empty`)
+
+    console.log(`Channel '${channel.toString()}'`)
   })
 })

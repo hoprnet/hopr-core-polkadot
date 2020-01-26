@@ -1,14 +1,14 @@
 import { Balance, AccountId, Channel as ChannelEnum, Hash, Signature } from '../srml_types'
 
 import { Opened, EventHandler } from '../events'
-import { HoprPolkadotClass } from '..'
+import HoprPolkadot from '..'
 
 export class ChannelOpener {
-  private constructor(private hoprPolkadot: HoprPolkadotClass, private counterparty: AccountId, private channelId: Hash) {}
+  private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, private channelId: Hash) {}
 
-  static async create(hoprPolkadot: HoprPolkadotClass, counterparty: AccountId): Promise<ChannelOpener> {
+  static async create(hoprPolkadot: HoprPolkadot, counterparty: AccountId): Promise<ChannelOpener> {
     const channelId = await hoprPolkadot.utils.getId(
-      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.publicKey),
+      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
       counterparty,
       hoprPolkadot.api
     )
@@ -28,7 +28,7 @@ export class ChannelOpener {
 
     await this.hoprPolkadot.api.tx.hopr
       .create(newAmount.toU8a(), this.counterparty)
-      .signAndSend(this.hoprPolkadot.self, { nonce: await this.hoprPolkadot.nonce })
+      .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
 
     return this
   }
@@ -37,7 +37,9 @@ export class ChannelOpener {
     const eventIdentifier = Opened(this.channelId)
 
     return new Promise<ChannelOpener>(resolve => {
-      this.hoprPolkadot.eventSubscriptions.once(eventIdentifier, () => resolve(this))
+      this.hoprPolkadot.eventSubscriptions.once(eventIdentifier, () => {
+        resolve(this)
+      })
     })
   }
 
@@ -61,7 +63,7 @@ export class ChannelOpener {
     await Promise.all([
       this.hoprPolkadot.api.tx.hopr
         .setActive(this.counterparty, signature.onChainSignature)
-        .signAndSend(this.hoprPolkadot.self, { nonce: await this.hoprPolkadot.nonce }),
+        .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce }),
       this.hoprPolkadot.db.put(this.hoprPolkadot.dbKeys.Channel(this.channelId), '')
     ])
 

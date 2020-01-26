@@ -5,7 +5,7 @@ import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
 import { createTypeUnsafe } from '@polkadot/types'
 
-import { HoprPolkadotClass } from '..'
+import HoprPolkadot from '..'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
@@ -16,7 +16,7 @@ export class Channel implements ChannelInstance {
   private _settlementWindow?: Moment
   private _channelId?: Hash
 
-  constructor(public hoprPolkadot: HoprPolkadotClass, public counterparty: AccountId, channel?: ChannelEnum) {
+  constructor(public hoprPolkadot: HoprPolkadot, public counterparty: AccountId, channel?: ChannelEnum) {
     if (channel != null) {
       this._channel = channel
     }
@@ -30,7 +30,7 @@ export class Channel implements ChannelInstance {
     return new Promise(async (resolve, reject) => {
       try {
         this._channelId = await this.hoprPolkadot.utils.getId(
-          this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.publicKey),
+          this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.keyPair.publicKey),
           this.counterparty,
           this.hoprPolkadot.api
         )
@@ -113,7 +113,7 @@ export class Channel implements ChannelInstance {
   get currentBalance(): Promise<Balance> {
     if (
       this.hoprPolkadot.utils.isPartyA(
-        this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.publicKey),
+        this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.keyPair.publicKey),
         this.counterparty
       )
     ) {
@@ -128,7 +128,7 @@ export class Channel implements ChannelInstance {
   get currentBalanceOfCounterparty(): Promise<Balance> {
     if (
       !this.hoprPolkadot.utils.isPartyA(
-        this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.publicKey),
+        this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.keyPair.publicKey),
         this.counterparty
       )
     ) {
@@ -191,7 +191,7 @@ export class Channel implements ChannelInstance {
     })
   }
 
-  static async create(hoprPolkadot: HoprPolkadotClass, counterparty: AccountId): Promise<Channel> {
+  static async create(hoprPolkadot: HoprPolkadot, counterparty: AccountId): Promise<Channel> {
     let record = await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty))
 
     return new Channel(
@@ -202,7 +202,7 @@ export class Channel implements ChannelInstance {
   }
 
   static async open(
-    hoprPolkadot: HoprPolkadotClass,
+    hoprPolkadot: HoprPolkadot,
     amount: Balance,
     signature: Promise<Signature>,
     counterparty: AccountId
@@ -224,7 +224,7 @@ export class Channel implements ChannelInstance {
   }
 
   static getAll<T, R>(
-    hoprPolkadot: HoprPolkadotClass,
+    hoprPolkadot: HoprPolkadot,
     onData: (channel: Channel) => T,
     onEnd: (promises: Promise<T>[]) => R
   ): Promise<R> {
@@ -248,7 +248,7 @@ export class Channel implements ChannelInstance {
         .on('end', () => resolve(onEnd(promises)))
     })
   }
-  static async closeChannels(hoprPolkadot: HoprPolkadotClass): Promise<Balance> {
+  static async closeChannels(hoprPolkadot: HoprPolkadot): Promise<Balance> {
     return Channel.getAll(
       hoprPolkadot,
       (channel: Channel) => {

@@ -185,7 +185,7 @@ export class Signature extends Uint8Array implements Types.Signature {
         )
       )
     } else if (arr != null && signatures == null) {
-      super(arr.buffer)
+      super(arr)
     } else {
       throw Error('Invalid constructor arguments.')
     }
@@ -206,7 +206,7 @@ export class Signature extends Uint8Array implements Types.Signature {
     )
   }
 
-  get sr25519Signature() {
+  get sr25519Signature(): Uint8Array {
     return this.subarray(
       SECP256K1_SIGNATURE_LENGTH + SECP256K1_SIGNATURE_RECOVERY_LENGTH + SR25519_PUBLIC_KEY_LENGTH,
       SECP256K1_SIGNATURE_LENGTH +
@@ -216,23 +216,23 @@ export class Signature extends Uint8Array implements Types.Signature {
     )
   }
 
-  get signature() {
+  get signature(): Uint8Array {
     return this.secp256k1Signature
   }
 
-  get msgPrefix() {
+  get msgPrefix(): Uint8Array {
     return this.sr25519PublicKey
   }
 
-  get recovery() {
+  get recovery(): number {
     return this.secp256k1Recovery[0]
   }
 
-  get onChainSignature() {
+  get onChainSignature(): Uint8Array {
     return this.sr25519Signature
   }
 
-  subarray(begin: number, end?: number) {
+  subarray(begin: number, end?: number): Uint8Array {
     return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
   }
 

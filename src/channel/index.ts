@@ -242,13 +242,13 @@ class Channel implements ChannelInstance {
   static async create(
     hoprPolkadot: HoprPolkadot,
     offChainCounterparty: Uint8Array,
-    getOnChainPublicKey: (counterparty: Uint8Array) => Promise<Uint8Array>,
+    getOnChainPublicKey: (counterparty: Uint8Array) => Promise<AccountId>,
     channelBalance?: ChannelBalance,
     sign?: (channelBalance: ChannelBalance) => Promise<SignedChannel>
   ): Promise<Channel> {
     let signedChannel: SignedChannel
 
-    const counterparty = hoprPolkadot.api.createType('AccountId', await getOnChainPublicKey(offChainCounterparty))
+    const counterparty = await getOnChainPublicKey(offChainCounterparty)
 
     const channelId = await hoprPolkadot.utils.getId(
       hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
@@ -280,7 +280,7 @@ class Channel implements ChannelInstance {
       await Promise.all([
         /* prettier-ignore */
         channelOpener.onceOpen(),
-        channelOpener.setActive(signedChannel).then(() => console.log('eh'))
+        channelOpener.setActive(signedChannel)
       ])
 
       await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))

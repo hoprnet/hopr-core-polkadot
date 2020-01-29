@@ -11,7 +11,7 @@ import { resolve } from 'path'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { createTypeUnsafe } from '@polkadot/types'
 
-import { Channel as ChannelEnum, Funded, ChannelBalance, State } from './srml_types'
+import { Channel as ChannelEnum, Funded, ChannelBalance, State, SignedChannel } from './srml_types'
 
 import UtilsClass from './utils'
 const Utils = new UtilsClass()
@@ -62,7 +62,6 @@ describe('Hopr Polkadot', async function() {
 
     await cryptoWaitReady()
 
-    
     if (process.env[`DEMO_ACCOUNT_0_PRIVATE_KEY`] == null) {
       throw Error(`Could not read private key from 'DEMO_ACCOUNT_0_PRIVATE_KEY'`)
     }
@@ -211,16 +210,23 @@ describe('Hopr Polkadot', async function() {
       await hoprAlice.utils.verify(
         channelEnum.toU8a(),
         await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey),
-        hoprBob.api.createType('AccountId', hoprBob.self.publicKey)
+        hoprBob.self.publicKey
       ),
       `check that we got a valid signature over the channel state`
     )
 
-    const channelOpener = await hoprAlice.channel.open(
+    const channelOpener = await hoprAlice.channel.create(
       hoprAlice,
-      balance,
-      hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey),
-      await hoprBob.utils.pubKeyToAccountId(hoprBob.self.keyPair.publicKey)
+      hoprBob.self.publicKey,
+      () => Promise.resolve(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)),
+      channelEnum.asFunded,
+      async () =>
+        Promise.resolve(
+          new SignedChannel(hoprAlice, undefined, {
+            channel: channelEnum,
+            signature: await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey)
+          })
+        )
     )
 
     console.log(chalk.green('channel opened'))

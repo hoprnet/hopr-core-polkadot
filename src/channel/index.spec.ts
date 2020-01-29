@@ -180,7 +180,10 @@ describe('test ticket generation and verification', function() {
     const channel = await Channel.create(
       hoprPolkadot,
       counterpartysHoprPolkadot.self.publicKey,
-      () => Promise.resolve(counterpartysHoprPolkadot.self.keyPair.publicKey),
+      () =>
+        Promise.resolve(
+          counterpartysHoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
+        ),
       signedChannel.channel.asFunded
     )
 
@@ -210,7 +213,7 @@ describe('test ticket generation and verification', function() {
     const counterpartysChannel = await Channel.create(
       counterpartysHoprPolkadot,
       hoprPolkadot.self.publicKey,
-      () => Promise.resolve(hoprPolkadot.self.keyPair.publicKey),
+      () => Promise.resolve(hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)),
       signedChannel.channel.asFunded
     )
 

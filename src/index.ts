@@ -1,10 +1,10 @@
+import assert from 'assert'
 import { ApiPromise, WsProvider } from '@polkadot/api'
-import { u8aToHex } from '@polkadot/util'
 import Keyring from '@polkadot/keyring'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, AccountId, Ticket } from './srml_types'
+import { Types, SRMLTypes, Balance, Ticket } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import UtilsClass from './utils'
@@ -45,18 +45,6 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
     this.eventSubscriptions = new EventSignalling(this.api)
   }
 
-  get started(): boolean {
-    if (!this._started) {
-      throw Error('Module is not yet fully initialised.')
-    }
-
-    return this._started
-  }
-
-  set started(started: boolean) {
-    this._started = started
-  }
-
   get nonce(): Promise<number> {
     if (this._nonce != null) {
       return Promise.resolve(this._nonce++)
@@ -74,16 +62,17 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
   }
 
   async start(): Promise<void> {
-    await Promise.all([
-      // prettier-ignore
-      this.api.isReady
-    ])
+    await this.api.isReady
 
-    this.started = true
+    this._started = true
+  }
+
+  get started(): boolean {
+    return this._started
   }
 
   async initOnchainValues(nonce?: number): Promise<void> {
-    this.started
+    assert(this.started, 'Module is not yet fully initialised.')
 
     let secret = new Uint8Array(randomBytes(32))
 
@@ -102,30 +91,20 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
       .signAndSend(this.self.keyPair, { nonce: nonce != null ? nonce : await this.nonce })
   }
 
-  async checkFreeBalance(newBalance: Balance): Promise<void> {
-    const balance: Balance = await this.api.query.balances.freeBalance<Balance>(
-      this.api.createType('AccountId', this.self.keyPair.publicKey)
-    )
-
-    if (balance.lt(newBalance))
-      throw Error('Insufficient balance. Free balance must be greater than requested balance.')
-  }
-
   async stop(): Promise<void> {
-    this.api.disconnect()
-
-    return new Promise(resolve => {
+    const promise = new Promise<void>(resolve => {
       this.api.once('disconnected', () => {
         resolve()
       })
     })
+
+    this.api.disconnect()
+
+    return promise
   }
 
-  async getAccountBalance(): Promise<Balance> {
-    return this.api.query.balances.freeBalance<Balance>(this.self.keyPair.publicKey)
-  }
-  async transfer(to: AccountId, amount: Balance): Promise<void> {
-    this.api.tx.balances.transfer(to, amount.toU8a()).signAndSend(this.self.keyPair)
+  get accountBalance(): Promise<Balance> {
+    return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.keyPair.publicKey))
   }
 
   utils = Utils
@@ -161,8 +140,6 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
       ...keyPair,
       keyPair: kPair
     }
-
-    console.log(`pubKey`, u8aToHex(kPair.publicKey))
 
     return new HoprPolkadotClass(api, hoprKeyPair, db)
   }

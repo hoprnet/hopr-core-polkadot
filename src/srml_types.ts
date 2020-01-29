@@ -12,9 +12,10 @@ import BN from 'bn.js'
 import secp256k1 from 'secp256k1'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'
-import { Channel as ConcreteChannelInstance } from './channel'
+import { Channel as ChannelInstance } from './channel'
 
 import { createTypeUnsafe } from '@polkadot/types'
+import HoprPolkadotClass from '.'
 
 const WIN_PROB = new BN(1)
 
@@ -70,6 +71,10 @@ export class ChannelBalance extends Struct.with({
 }) {
   declare balance: Balance
   declare balance_a: Balance
+
+  static get SIZE(): number {
+    return Balance.SIZE + Balance.SIZE
+  }
 }
 
 export class Uninitialized extends Null {
@@ -246,6 +251,61 @@ export class Signature extends Uint8Array implements Types.Signature {
   }
 }
 
+export class SignedChannel extends Uint8Array {
+  private hoprPolkadot: HoprPolkadotClass
+  constructor(
+    hoprPolkadot: HoprPolkadotClass,
+    arr?: Uint8Array,
+    struct?: {
+      signature: Signature
+      channel: Channel
+    }
+  ) {
+    if (arr != null && struct == null) {
+      super(arr)
+    } else if (arr == null && struct != null) {
+      super(u8aConcat(struct.signature, struct.channel.toU8a()))
+    } else {
+      throw Error(`Invalid constructor arguments.`)
+    }
+
+    this.hoprPolkadot = hoprPolkadot
+  }
+
+  subarray(begin: number, end?: number): Uint8Array {
+    return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
+  }
+
+  get signature(): Signature {
+    return new Signature(this.subarray(0, Signature.SIZE))
+  }
+
+  set signature(newSignature: Signature) {
+    this.set(newSignature, 0)
+  }
+
+  // TODO: Only expecting Funded or Active Channels
+  get channel(): Channel {
+    return new Channel(this.hoprPolkadot.api.registry, this.subarray(Signature.SIZE, Signature.SIZE + ChannelBalance.SIZE + 1))
+  }
+
+  static get SIZE() {
+    return Signature.SIZE + ChannelBalance.SIZE + 1
+  }
+
+  get signer() {
+    return secp256k1.recover(
+      Buffer.from(this.signature.sr25519PublicKey),
+      Buffer.from(this.signature.signature),
+      this.signature.recovery
+    )
+  }
+
+  toU8a(): Uint8Array {
+    return new Uint8Array(this.buffer, 0, SignedChannel.SIZE)
+  }
+}
+
 export class SignedTicket extends Uint8Array implements Types.SignedTicket {
   constructor(
     arr?: Uint8Array,
@@ -259,7 +319,7 @@ export class SignedTicket extends Uint8Array implements Types.SignedTicket {
     } else if (arr == null && struct != null) {
       super(u8aConcat(struct.signature, struct.ticket.toU8a()))
     } else {
-      throw Error('Invalid constructor arguments.')
+      throw Error(`Invalid constructor arguments.`)
     }
   }
 
@@ -321,7 +381,7 @@ export class Ticket
   }
 
   static async create(
-    channel: ConcreteChannelInstance,
+    channel: ChannelInstance,
     amount: Balance,
     challenge: Hash,
     privKey: Uint8Array,
@@ -353,19 +413,20 @@ export class Ticket
     })
   }
 
-  static async verify(channel: ConcreteChannelInstance, signedTicket: SignedTicket): Promise<boolean> {
+  static async verify(channel: ChannelInstance, signedTicket: SignedTicket): Promise<boolean> {
     if ((await channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await channel.balance)) {
       return false
     }
 
     try {
       await channel.testAndSetNonce(signedTicket)
-    } catch (_) {
+    } catch {
       return false
     }
-    return channel.hoprPolkadot.utils.verify(signedTicket.ticket.toU8a(), signedTicket.signature, channel.counterparty)
+
+    return channel.hoprPolkadot.utils.verify(signedTicket.ticket.toU8a(), signedTicket.signature, channel.offChainCounterparty)
   }
-  static async submit(channel: ConcreteChannelInstance, signedTicket: SignedTicket) {}
+  static async submit(channel: ChannelInstance, signedTicket: SignedTicket) {}
   // async aggregate(tickets: Ticket[]): Promise<Ticket> {
   //   throw Error('not implemented')
   //   return Promise.resolve(tickets[0])
@@ -403,8 +464,9 @@ const SRMLTypes = {
 }
 
 const Types = {
-  SignedTicket: SignedTicket,
-  Signature: Signature,
+  SignedChannel,
+  SignedTicket,
+  Signature,
   ...SRMLTypes
 }
 

@@ -156,20 +156,25 @@ export default class Utils implements IUtils {
    * @param signature signature to verify
    * @param accountId public key of the signer
    */
-  async verify(msg: Uint8Array, signature: Signature, accountId: AccountId): Promise<boolean> {
+  async verify(msg: Uint8Array, signature: Signature, pubKey: Uint8Array): Promise<boolean> {
     await waitReady()
 
     if (
       !(
-        await this.pubKeyToAccountId(
           secp256k1.recover(
             Buffer.from(signature.sr25519PublicKey),
             Buffer.from(signature.secp256k1Signature),
             signature.secp256k1Recovery[0]
           )
-        )
-      ).every((value: number, index: number) => value == accountId[index])
+      ).every((value: number, index: number) => value == pubKey[index])
     ) {
+      console.log(`is`,         (await this.pubKeyToAccountId(
+        secp256k1.recover(
+          Buffer.from(signature.sr25519PublicKey),
+          Buffer.from(signature.secp256k1Signature),
+          signature.secp256k1Recovery[0]
+        )
+      )).toU8a(), `but should be`, pubKey)
       throw Error('invalid secp256k1 signature.')
     }
 

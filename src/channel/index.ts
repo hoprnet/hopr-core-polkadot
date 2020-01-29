@@ -1,9 +1,9 @@
-import { Hash, Ticket, Channel as ChannelEnum, Balance, Signature } from '../srml_types'
+import { Hash, Ticket, Channel as ChannelEnum, ChannelBalance, Balance, SignedChannel } from '../srml_types'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
-import { createTypeUnsafe } from '@polkadot/types'
+import { u8aToHex } from '@polkadot/util'
 
 import HoprPolkadot from '..'
 
@@ -11,15 +11,17 @@ const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
 import { ChannelInstance } from '@hoprnet/hopr-core-connector-interface'
 
-export class Channel implements ChannelInstance {
-  private _channel?: ChannelEnum
+class Channel implements ChannelInstance {
+  private _signedChannel: SignedChannel
   private _settlementWindow?: Moment
   private _channelId?: Hash
 
-  constructor(public hoprPolkadot: HoprPolkadot, public counterparty: AccountId, channel?: ChannelEnum) {
-    if (channel != null) {
-      this._channel = channel
-    }
+  constructor(public hoprPolkadot: HoprPolkadot, public counterparty: AccountId, signedChannel: SignedChannel) {
+    this._signedChannel = signedChannel
+  }
+
+  get offChainCounterparty(): Uint8Array {
+    return this._signedChannel.signer
   }
 
   get channelId(): Promise<Hash> {
@@ -43,20 +45,22 @@ export class Channel implements ChannelInstance {
   }
 
   private get channel(): Promise<ChannelEnum> {
-    if (this._channel != null) {
-      return Promise.resolve<ChannelEnum>(this._channel)
+    if (this._signedChannel != null) {
+      return Promise.resolve<ChannelEnum>(this._signedChannel.channel)
     }
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        this._channel = createTypeUnsafe<ChannelEnum>(this.hoprPolkadot.api.registry, 'Channel', [
+        console.log(await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
+        this._signedChannel = new SignedChannel(
+          this.hoprPolkadot,
           await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty))
-        ])
+        )
       } catch (err) {
         return reject(err)
       }
 
-      return resolve(this._channel)
+      return resolve(this._signedChannel.channel)
     })
   }
 
@@ -141,6 +145,11 @@ export class Channel implements ChannelInstance {
 
   ticket = Ticket
 
+  /**
+   * Initiates the settlement of this payment channel.
+   * @returns a Promise that resolves once the payment channel is settled, otherwise
+   * it rejects the Promise with an error.
+   */
   async initiateSettlement(): Promise<void> {
     let channelSettler: ChannelSettler
 
@@ -155,7 +164,11 @@ export class Channel implements ChannelInstance {
       throw err
     }
 
-    await Promise.all([channelSettler.onceClosed().then(() => channelSettler.withdraw()), channelSettler.init()])
+    await Promise.all([
+      /* prettier-ignore */
+      channelSettler.onceClosed().then(() => channelSettler.withdraw()),
+      channelSettler.init()
+    ])
   }
 
   async getPreviousChallenges(): Promise<Hash> {
@@ -191,36 +204,95 @@ export class Channel implements ChannelInstance {
     })
   }
 
-  static async create(hoprPolkadot: HoprPolkadot, counterparty: AccountId): Promise<Channel> {
-    let record = await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty))
-
-    return new Channel(
-      hoprPolkadot,
-      counterparty,
-      createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', record)
-    )
-  }
-
-  static async open(
-    hoprPolkadot: HoprPolkadot,
-    amount: Balance,
-    signature: Promise<Signature>,
-    counterparty: AccountId
-  ): Promise<Channel> {
-    const channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty)
-
-    await channelOpener.increaseFunds(amount)
-    await Promise.all([
-      /* prettier-ignore */
-      channelOpener.onceOpen(),
-      channelOpener.setActive(await signature)
+  /**
+   * Checks if there exists a payment channel with `counterparty`.
+   * @param hoprPolkadot the CoreConnector instance
+   * @param counterparty secp256k1 public key of the counterparty
+   */
+  static async isOpen(hoprPolkadot: HoprPolkadot, counterparty: AccountId, channelId: Hash) {
+    const [onChain, offChain]: [boolean, boolean] = await Promise.all([
+      hoprPolkadot.api.query.hopr.channels<ChannelEnum>(channelId).then(
+        (channel: ChannelEnum) => channel != null && channel.type != 'Uninitialized',
+        _ => false
+      ),
+      hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)).then(
+        _ => true,
+        (err: any) => {
+          console.log(err)
+          if (err.notFound) {
+            return false
+          } else {
+            throw err
+          }
+        }
+      )
     ])
 
-    const channel = new Channel(hoprPolkadot, counterparty)
+    if (onChain != offChain) {
+      if (!onChain && offChain) {
+        throw Error(`Channel ${u8aToHex(channelId)} exists off-chain but not on-chain.`)
+      } else {
+        throw Error(`Channel ${u8aToHex(channelId)} exists on-chain but not off-chain.`)
+      }
+    }
 
-    await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), channel)
+    return onChain && offChain
+  }
 
-    return channel
+  static async create(
+    hoprPolkadot: HoprPolkadot,
+    offChainCounterparty: Uint8Array,
+    getOnChainPublicKey: (counterparty: Uint8Array) => Promise<Uint8Array>,
+    channelBalance?: ChannelBalance,
+    sign?: (channelBalance: ChannelBalance) => Promise<SignedChannel>
+  ): Promise<Channel> {
+    let signedChannel: SignedChannel
+
+    const counterparty = hoprPolkadot.api.createType('AccountId', await getOnChainPublicKey(offChainCounterparty))
+
+    const channelId = await hoprPolkadot.utils.getId(
+      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+      counterparty,
+      hoprPolkadot.api
+    )
+    if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
+      signedChannel = new SignedChannel(
+        hoprPolkadot,
+        await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty))
+      )
+    } else if (sign != null && channelBalance != null) {
+      const channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
+
+      if (
+        hoprPolkadot.utils.isPartyA(
+          hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+          counterparty
+        )
+      ) {
+        await channelOpener.increaseFunds(channelBalance.balance_a)
+      } else {
+        await channelOpener.increaseFunds(
+          hoprPolkadot.api.createType('Balance', channelBalance.balance.sub(channelBalance.balance_a.toBn()))
+        )
+      }
+
+      signedChannel = await sign(channelBalance)
+      await Promise.all([
+        /* prettier-ignore */
+        channelOpener.onceOpen(),
+        channelOpener.setActive(signedChannel).then(() => console.log('eh'))
+      ])
+
+      await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+    } else {
+      throw Error('Invalid input parameters.')
+    }
+
+    return new Channel(hoprPolkadot, counterparty, signedChannel)
+  }
+
+  static async handleOpeningRequest(hoprPolkadot: HoprPolkadot, input: Uint8Array): Promise<Uint8Array> {
+    return ChannelOpener.handleOpeningRequest(hoprPolkadot, input)
   }
 
   static getAll<T, R>(
@@ -236,12 +308,14 @@ export class Channel implements ChannelInstance {
           lt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
         })
         .on('error', err => reject(err))
-        .on('data', ({ key, value }) => {
-          const channel: ChannelEnum = createTypeUnsafe<ChannelEnum>(hoprPolkadot.api.registry, 'Channel', [value])
+        .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {
+          const signedChannel: SignedChannel = new SignedChannel(hoprPolkadot, value)
 
           promises.push(
             Promise.resolve(
-              onData(new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), channel))
+              onData(
+                new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), signedChannel)
+              )
             )
           )
         })
@@ -278,3 +352,5 @@ export class Channel implements ChannelInstance {
     )
   }
 }
+
+export { Channel }

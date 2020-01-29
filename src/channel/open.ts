@@ -1,30 +1,78 @@
-import { Balance, AccountId, Channel as ChannelEnum, Hash, Signature } from '../srml_types'
+import {
+  Balance,
+  AccountId,
+  Channel as ChannelEnum,
+  Hash,
+  SignedChannel,
+} from '../srml_types'
 
 import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
 
 export class ChannelOpener {
-  private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, private channelId: Hash) {}
+  private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, public channelId: Hash) {}
 
-  static async create(hoprPolkadot: HoprPolkadot, counterparty: AccountId): Promise<ChannelOpener> {
+  static async handleOpeningRequest(hoprPolkadot: HoprPolkadot, input: Uint8Array): Promise<Uint8Array> {
+    const signedChannel = new SignedChannel(hoprPolkadot, Uint8Array.from(input))
+
+    const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
+
     const channelId = await hoprPolkadot.utils.getId(
-      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
       counterparty,
+      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
       hoprPolkadot.api
     )
 
-    await hoprPolkadot.db
-      .get(hoprPolkadot.dbKeys.Channel(counterparty))
-      .then(_ => {
-        throw Error('Channel must not exit.')
-      })
-      .catch(_ => {})
+    let channelOpener = await this.create(hoprPolkadot, counterparty, channelId)
 
+    channelOpener
+      .onceOpen()
+      .then(() =>
+        hoprPolkadot.db.put(
+          hoprPolkadot.dbKeys.Channel(counterparty),
+          Buffer.from(signedChannel.toU8a())
+        )
+      )
+
+    if (
+      hoprPolkadot.utils.isPartyA(
+        hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+        counterparty
+      )
+    ) {
+      await channelOpener.increaseFunds(signedChannel.channel.asFunded.balance_a)
+    } else {
+      await channelOpener.increaseFunds(
+        hoprPolkadot.api.createType(
+          'Balance',
+          signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
+        )
+      )
+    }
+
+    await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+
+    signedChannel.signature = await hoprPolkadot.utils.sign(
+      signedChannel.channel.toU8a(),
+      hoprPolkadot.self.privateKey,
+      hoprPolkadot.self.publicKey
+    )
+
+    return signedChannel.toU8a()
+  }
+
+  static async create(
+    hoprPolkadot: HoprPolkadot,
+    counterparty: AccountId,
+    channelId: Hash
+  ): Promise<ChannelOpener> {
     return new ChannelOpener(hoprPolkadot, counterparty, channelId)
   }
 
   async increaseFunds(newAmount: Balance): Promise<ChannelOpener> {
-    await this.hoprPolkadot.checkFreeBalance(newAmount)
+    if ((await this.hoprPolkadot.accountBalance).lt(newAmount)) {
+      throw Error('Insufficient funds.')
+    }
 
     await this.hoprPolkadot.api.tx.hopr
       .create(newAmount.toU8a(), this.counterparty)
@@ -43,7 +91,6 @@ export class ChannelOpener {
     })
   }
 
-  // @TODO
   async onceFundedByCounterparty(handler?: EventHandler): Promise<void | ChannelOpener> {
     if (handler == null) {
       return new Promise<ChannelOpener>(async resolve => {
@@ -54,18 +101,17 @@ export class ChannelOpener {
       })
     }
 
+    // TODO specify else
+
     const unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, _ => {
       unsubscribe()
     })
   }
 
-  async setActive(signature: Signature): Promise<ChannelOpener> {
-    await Promise.all([
-      this.hoprPolkadot.api.tx.hopr
-        .setActive(this.counterparty, signature.onChainSignature)
-        .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce }),
-      this.hoprPolkadot.db.put(this.hoprPolkadot.dbKeys.Channel(this.channelId), '')
-    ])
+  async setActive(signedChannel: SignedChannel): Promise<ChannelOpener> {
+    await this.hoprPolkadot.api.tx.hopr
+      .setActive(this.counterparty, signedChannel.signature.onChainSignature)
+      .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
 
     return this
   }

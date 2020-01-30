@@ -11,7 +11,7 @@
 
 "@hoprnet/hopr-core-connector-interface@hoprnet/hopr-core-connector-interface":
   version "1.0.0"
-  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/84099421b83e2fbb000b5ff8b26b181b4abbcfd0"
+  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/c5a507d257e16a06a3044f779d5e900a12a5243f"
 
 "@hoprnet/hopr-types@hoprnet/hopr-types":
   version "0.3.0"
@@ -194,10 +194,10 @@
   resolved "https://registry.yarnpkg.com/@types/memoizee/-/memoizee-0.4.3.tgz#f48270d19327c1709620132cf54d598650f98492"
   integrity sha512-N6QT0c9ZbEKl33n1wyoTxZs4cpN+YXjs0Aqy5Qim8ipd9PBNIPqOh/p5Pixc4601tqr5GErsdxUbfqviDfubNw==
 
-"@types/mocha@^5.2.7":
-  version "5.2.7"
-  resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-5.2.7.tgz#315d570ccb56c53452ff8638738df60726d5b6ea"
-  integrity sha512-NYrtPht0wGzhwe9+/idPaBB+TqkY9AhTvOLMkThm0IoEfLaiVQZwBwyJ5puCkO3AUCWrmcoePjp2mbFocKy4SQ==
+"@types/mocha@^7.0.1":
+  version "7.0.1"
+  resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-7.0.1.tgz#5d7ec2a789a1f77c59b7ad071b9d50bf1abbfc9e"
+  integrity sha512-L/Nw/2e5KUaprNJoRA33oly+M8X8n0K+FwLTbYqwTcR14wdPWeRkigBLfSFpN/Asf9ENZTMZwLxjtjeYucAA4Q==
 
 "@types/node@*":
   version "13.5.1"

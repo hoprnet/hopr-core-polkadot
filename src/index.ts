@@ -107,14 +107,17 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
     return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.keyPair.publicKey))
   }
 
-  utils = Utils
-  types = Types
+  readonly utils = Utils
+  
+  readonly types = Types
 
-  channel = Channel
+  readonly channel = Channel
 
-  dbKeys = DbKeys
+  readonly dbKeys = DbKeys
 
-  constants = Constants
+  readonly constants = Constants
+
+  readonly CHAIN_NAME = `HOPR on Polkadot`
 
   /**
    * Creates an uninitialised instance.

@@ -286,7 +286,10 @@ export class SignedChannel extends Uint8Array {
 
   // TODO: Only expecting Funded or Active Channels
   get channel(): Channel {
-    return new Channel(this.hoprPolkadot.api.registry, this.subarray(Signature.SIZE, Signature.SIZE + ChannelBalance.SIZE + 1))
+    return new Channel(
+      this.hoprPolkadot.api.registry,
+      this.subarray(Signature.SIZE, Signature.SIZE + ChannelBalance.SIZE + 1)
+    )
   }
 
   static get SIZE() {
@@ -424,7 +427,11 @@ export class Ticket
       return false
     }
 
-    return channel.hoprPolkadot.utils.verify(signedTicket.ticket.toU8a(), signedTicket.signature, channel.offChainCounterparty)
+    return channel.hoprPolkadot.utils.verify(
+      signedTicket.ticket.toU8a(),
+      signedTicket.signature,
+      channel.offChainCounterparty
+    )
   }
   static async submit(channel: ChannelInstance, signedTicket: SignedTicket) {}
   // async aggregate(tickets: Ticket[]): Promise<Ticket> {

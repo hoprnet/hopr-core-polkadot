@@ -213,10 +213,10 @@ class Channel implements ChannelInstance {
     const [onChain, offChain]: [boolean, boolean] = await Promise.all([
       hoprPolkadot.api.query.hopr.channels<ChannelEnum>(channelId).then(
         (channel: ChannelEnum) => channel != null && channel.type != 'Uninitialized',
-        _ => false
+        () => false
       ),
       hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)).then(
-        _ => true,
+        () => true,
         (err: any) => {
           console.log(err)
           if (err.notFound) {
@@ -297,7 +297,7 @@ class Channel implements ChannelInstance {
 
   static getAll<T, R>(
     hoprPolkadot: HoprPolkadot,
-    onData: (channel: Channel) => T,
+    onData: (channel: Channel) => Promise<T>,
     onEnd: (promises: Promise<T>[]) => R
   ): Promise<R> {
     const promises: Promise<T>[] = []
@@ -325,9 +325,7 @@ class Channel implements ChannelInstance {
   static async closeChannels(hoprPolkadot: HoprPolkadot): Promise<Balance> {
     return Channel.getAll(
       hoprPolkadot,
-      (channel: Channel) => {
-        channel.initiateSettlement()
-      },
+      (channel: Channel) => channel.initiateSettlement(),
       async (promises: Promise<void>[]) => {
         return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
       }

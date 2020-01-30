@@ -1,4 +1,3 @@
-require('dotenv').config()
 import assert from 'assert'
 
 import HoprPolkadot from '.'
@@ -20,7 +19,7 @@ import LevelUp from 'levelup'
 import Memdown from 'memdown'
 
 import chalk from 'chalk'
-import config from './config.json'
+import { polkadotBasepath } from './config'
 
 const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 const FORTY_SECONDS = 40 * 1000
@@ -32,7 +31,7 @@ type KeyPair = {
 
 // @TODO: Fix new accounts
 describe('Hopr Polkadot', async function() {
-  const path: string = resolve(__dirname, config.polkadotBasepath)
+  const path: string = resolve(__dirname, polkadotBasepath)
   const binaryPath: string = resolve(path, 'target/debug')
 
   let Alice: KeyPair

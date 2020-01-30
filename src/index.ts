@@ -1,3 +1,4 @@
+
 import assert from 'assert'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import Keyring from '@polkadot/keyring'
@@ -10,8 +11,7 @@ import { waitReady } from '@polkadot/wasm-crypto'
 import UtilsClass from './utils'
 import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
-
-const POLKADOT_URI: string = 'ws://localhost:9944'
+import { DEFAULT_URI } from './config'
 
 import { Channel } from './channel'
 
@@ -122,7 +122,7 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
   /**
    * Creates an uninitialised instance.
    *
-   * @param db database instance, e.g. `ws://localhost:9944`
+   * @param db database instance
    * @param keyPair privKey and publicKey of this node
    */
   static async create(
@@ -130,11 +130,10 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
     keyPair: {
       publicKey: Uint8Array
       privateKey: Uint8Array
-    },
-    uri: string = POLKADOT_URI
+    }
   ): Promise<HoprPolkadotClass> {
     const api = await ApiPromise.create({
-      provider: new WsProvider(uri),
+      provider: new WsProvider(DEFAULT_URI),
       types: SRMLTypes
     })
 

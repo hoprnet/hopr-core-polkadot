@@ -28,6 +28,14 @@ export class Balance extends u128 implements Types.Balance, IBalance {
   static get SIZE(): number {
     return 16
   }
+
+  static get SYMBOL(): string {
+    return `HOPR`
+  }
+
+  static get DECIMALS(): number {
+    return 18
+  }
 }
 export class Moment extends u64 implements Types.Moment, IMoment {
   static get SIZE(): number {

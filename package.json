@@ -22,7 +22,7 @@
   "dependencies": {
     "@polkadot/api": "^0.100.1",
     "@polkadot/util": "^1.8.1",
-    "@polkadot/wasm-crypto": "^0.14.1",
+    "@polkadot/wasm-crypto": "^0.20.1",
     "bn.js": "~5.1.1",
     "chalk": "^3.0.0",
     "peer-id": "^0.13.6",

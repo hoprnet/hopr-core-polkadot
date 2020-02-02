@@ -3,9 +3,9 @@
 
 
 "@babel/runtime@^7.7.7":
-  version "7.8.3"
-  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.8.3.tgz#0811944f73a6c926bb2ad35e918dcc1bfab279f1"
-  integrity sha512-fVHx1rzEmwB130VTkLnxR+HmxcTjGzH12LYQcFFoBwakMd3aOMD4OsRN7tGG/UOYE2ektgFrS8uACAoRk1CY0w==
+  version "7.8.4"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.8.4.tgz#d79f5a2040f7caa24d53e563aad49cbc05581308"
+  integrity sha512-neAp3zt80trRVBI1x0azq6c57aNBqYZH8KhMm3TaB7wEI5Q4A2SHfBHE8w9gOhI/lrqxtEbXZgQIrHP+wvSGwQ==
   dependencies:
     regenerator-runtime "^0.13.2"
 
@@ -205,11 +205,11 @@
   integrity sha512-L/Nw/2e5KUaprNJoRA33oly+M8X8n0K+FwLTbYqwTcR14wdPWeRkigBLfSFpN/Asf9ENZTMZwLxjtjeYucAA4Q==
 
 "@types/node@*":
-  version "13.5.1"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-13.5.1.tgz#6fae50892d1841f4b38b298e2f78fb68c5960cb9"
-  integrity sha512-Jj2W7VWQ2uM83f8Ls5ON9adxN98MvyJsMSASYFuSvrov8RMRY64Ayay7KV35ph1TSGIJ2gG9ZVDdEq3c3zaydA==
+  version "13.7.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-13.7.0.tgz#b417deda18cf8400f278733499ad5547ed1abec4"
+  integrity sha512-GnZbirvmqZUzMgkFn70c74OQpTTUcCzlhQliTzYjQMqg+hVKcDnxdL19Ne3UdYzdMA/+W3eb646FWn/ZaT1NfQ==
 
-"@types/node@~12.12.21":
+"@types/node@^12.12.26":
   version "12.12.26"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.12.26.tgz#213e153babac0ed169d44a6d919501e68f59dea9"
   integrity sha512-UmUm94/QZvU5xLcUlNR8hA7Ac+fGpO1EG/a8bcWVz0P0LqtxFmun9Y2bbtuckwGboWJIT70DoWq1r3hb56n3DA==
@@ -229,9 +229,9 @@
     "@types/node" "*"
 
 "@types/secp256k1@^3.5.0":
-  version "3.5.1"
-  resolved "https://registry.yarnpkg.com/@types/secp256k1/-/secp256k1-3.5.1.tgz#bb02d62aa037ac0b1e90bf95bd83f11432fbcfa6"
-  integrity sha512-kZqDSKgDu5b6iD3QZdQ9Ia4FHd7H37S5TMM4WJtt0DK0M9XkrtQOvm5sWzE2LVoie2XRtk5s7uKdjDzBi2BoNw==
+  version "3.5.2"
+  resolved "https://registry.yarnpkg.com/@types/secp256k1/-/secp256k1-3.5.2.tgz#48df62bb0d93377bee02e20c3851e61ebfde9ded"
+  integrity sha512-VMSLq+CFdgQt8Yuf4BgWudzUfmum4wMDewonuQtV+ZbS8zfX1Co3GHRRqVvBBOjGr+KIGH/ufBbEoBO3PciD4w==
   dependencies:
     "@types/node" "*"
 

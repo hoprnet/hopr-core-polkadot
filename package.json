@@ -11,10 +11,10 @@
     "test": "npx mocha"
   },
   "files": [
-    "!**/*.spec.ts",
-    "lib/",
+    "src/",
     "hopr.png",
-    "tsconfig.json"
+    "tsconfig.json",
+    "!**/*.spec.ts"
   ],
   "engines": {
     "yarn": "^1.19.2",

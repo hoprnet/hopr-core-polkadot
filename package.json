@@ -13,7 +13,8 @@
   "files": [
     "!**/*.spec.ts",
     "lib/",
-    "hopr.png"
+    "hopr.png",
+    "tsconfig.json"
   ],
   "engines": {
     "yarn": "^1.19.2",

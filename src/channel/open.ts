@@ -1,71 +1,66 @@
-import {
-  Balance,
-  AccountId,
-  Channel as ChannelEnum,
-  Hash,
-  SignedChannel,
-} from '../srml_types'
+import { Balance, AccountId, Channel as ChannelEnum, Hash, SignedChannel } from '../srml_types'
 
 import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
 
-export class ChannelOpener {
+class ChannelOpener {
   private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, public channelId: Hash) {}
 
-  static async handleOpeningRequest(hoprPolkadot: HoprPolkadot, input: Uint8Array): Promise<Uint8Array> {
-    const signedChannel = new SignedChannel(hoprPolkadot, Uint8Array.from(input))
+  static handleOpeningRequest(
+    hoprPolkadot: HoprPolkadot
+  ): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
+    return (source: AsyncIterable<Uint8Array>) => {
+      return (async function*() {
+        for await (const msg of source) {
+          const signedChannel = new SignedChannel(hoprPolkadot, msg)
 
-    const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
+          const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
 
-    const channelId = await hoprPolkadot.utils.getId(
-      counterparty,
-      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-      hoprPolkadot.api
-    )
+          const channelId = await hoprPolkadot.utils.getId(
+            counterparty,
+            hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+            hoprPolkadot.api
+          )
 
-    let channelOpener = await this.create(hoprPolkadot, counterparty, channelId)
+          let channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
 
-    channelOpener
-      .onceOpen()
-      .then(() =>
-        hoprPolkadot.db.put(
-          hoprPolkadot.dbKeys.Channel(counterparty),
-          Buffer.from(signedChannel.toU8a())
-        )
-      )
+          channelOpener
+            .onceOpen()
+            .then(() =>
+              hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+            )
 
-    if (
-      hoprPolkadot.utils.isPartyA(
-        hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-        counterparty
-      )
-    ) {
-      await channelOpener.increaseFunds(signedChannel.channel.asFunded.balance_a)
-    } else {
-      await channelOpener.increaseFunds(
-        hoprPolkadot.api.createType(
-          'Balance',
-          signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
-        )
-      )
+          if (
+            hoprPolkadot.utils.isPartyA(
+              hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+              counterparty
+            )
+          ) {
+            await channelOpener.increaseFunds(signedChannel.channel.asFunded.balance_a)
+          } else {
+            await channelOpener.increaseFunds(
+              hoprPolkadot.api.createType(
+                'Balance',
+                signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
+              )
+            )
+          }
+
+          await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+
+          signedChannel.signature = await hoprPolkadot.utils.sign(
+            signedChannel.channel.toU8a(),
+            hoprPolkadot.self.privateKey,
+            hoprPolkadot.self.publicKey
+          )
+
+          yield signedChannel.toU8a()
+        }
+      })()
     }
-
-    await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
-
-    signedChannel.signature = await hoprPolkadot.utils.sign(
-      signedChannel.channel.toU8a(),
-      hoprPolkadot.self.privateKey,
-      hoprPolkadot.self.publicKey
-    )
-
-    return signedChannel.toU8a()
   }
 
-  static async create(
-    hoprPolkadot: HoprPolkadot,
-    counterparty: AccountId,
-    channelId: Hash
-  ): Promise<ChannelOpener> {
+  static async create(hoprPolkadot: HoprPolkadot, counterparty: AccountId, channelId: Hash): Promise<ChannelOpener> {
     return new ChannelOpener(hoprPolkadot, counterparty, channelId)
   }
 
@@ -116,3 +111,5 @@ export class ChannelOpener {
     return this
   }
 }
+
+export { ChannelOpener }

@@ -291,8 +291,8 @@ class Channel implements ChannelInstance {
     return new Channel(hoprPolkadot, counterparty, signedChannel)
   }
 
-  static async handleOpeningRequest(hoprPolkadot: HoprPolkadot, input: Uint8Array): Promise<Uint8Array> {
-    return ChannelOpener.handleOpeningRequest(hoprPolkadot, input)
+  static handleOpeningRequest(hoprPolkadot: HoprPolkadot): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
+    return ChannelOpener.handleOpeningRequest(hoprPolkadot)
   }
 
   static getAll<T, R>(
@@ -322,6 +322,7 @@ class Channel implements ChannelInstance {
         .on('end', () => resolve(onEnd(promises)))
     })
   }
+
   static async closeChannels(hoprPolkadot: HoprPolkadot): Promise<Balance> {
     return Channel.getAll(
       hoprPolkadot,

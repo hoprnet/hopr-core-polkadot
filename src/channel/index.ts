@@ -242,13 +242,13 @@ class Channel implements ChannelInstance {
   static async create(
     hoprPolkadot: HoprPolkadot,
     offChainCounterparty: Uint8Array,
-    getOnChainPublicKey: (counterparty: Uint8Array) => Promise<AccountId>,
+    getOnChainPublicKey: (counterparty: Uint8Array) => Promise<Uint8Array>,
     channelBalance?: ChannelBalance,
     sign?: (channelBalance: ChannelBalance) => Promise<SignedChannel>
   ): Promise<Channel> {
     let signedChannel: SignedChannel
 
-    const counterparty = await getOnChainPublicKey(offChainCounterparty)
+    const counterparty = hoprPolkadot.api.createType('AccountId', await getOnChainPublicKey(offChainCounterparty))
 
     const channelId = await hoprPolkadot.utils.getId(
       hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),

@@ -2,7 +2,7 @@ import { Hash, Balance } from './srml_types'
 import { Vec } from '@polkadot/types/codec'
 import { ApiPromise } from '@polkadot/api'
 import { EventRecord, Event } from '@polkadot/types/interfaces'
-import UtilsClass from './utils'
+import { Utils as UtilsClass } from './utils'
 const Utils = new UtilsClass()
 
 export type EventHandler = (event: Event) => void

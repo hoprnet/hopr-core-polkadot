@@ -21,7 +21,14 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     if (arr != null && struct == null) {
       super(arr)
     } else if (arr == null && struct != null) {
-      super(u8aConcat(struct.signature, struct.ticket.toU8a()))
+      const ticket = struct.ticket.toU8a()
+      if (ticket.length == Ticket.SIZE) {
+        super(u8aConcat(struct.signature, ticket))
+      } else if (ticket.length < Ticket.SIZE) {
+        super(u8aConcat(struct.signature, ticket, new Uint8Array(Ticket.SIZE - ticket.length)))
+      } else {
+        throw Error(`Ticket is too big by ${ticket.length - Ticket.SIZE} elements.`)
+      }
     } else {
       throw Error(`Invalid constructor arguments.`)
     }

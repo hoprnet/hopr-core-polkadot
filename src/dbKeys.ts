@@ -37,13 +37,13 @@ export default class DbKeys implements IDbKeys {
     return [
       api.createType(
         'Hash',
-        arr.subarray(PREFIX.length + channelSubPrefix.length, PREFIX.length + channelSubPrefix.length + Hash.length)
+        arr.subarray(PREFIX.length + channelSubPrefix.length, PREFIX.length + channelSubPrefix.length + Hash.SIZE)
       ),
       api.createType(
         'Hash',
         arr.subarray(
-          PREFIX.length + channelSubPrefix.length + Hash.length + SEPERATOR.length,
-          PREFIX.length + channelSubPrefix.length + Hash.length + SEPERATOR.length + Hash.length
+          PREFIX.length + channelSubPrefix.length + Hash.SIZE + SEPERATOR.length,
+          PREFIX.length + channelSubPrefix.length + Hash.SIZE + SEPERATOR.length + Hash.SIZE
         )
       )
     ]

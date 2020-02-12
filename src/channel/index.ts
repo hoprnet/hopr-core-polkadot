@@ -178,11 +178,11 @@ class Channel implements ChannelInstance {
         .createReadStream({
           gt: this.hoprPolkadot.dbKeys.Challenge(
             await this.channelId,
-            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))
+            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00))
           ),
           lt: this.hoprPolkadot.dbKeys.Challenge(
             await this.channelId,
-            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))
+            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00))
           )
         })
         .on('error', reject)
@@ -302,8 +302,8 @@ class Channel implements ChannelInstance {
     return new Promise<R>((resolve, reject) => {
       hoprPolkadot.db
         .createReadStream({
-          gt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0x00))),
-          lt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.length).fill(0xff)))
+          gt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00))),
+          lt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff)))
         })
         .on('error', err => reject(err))
         .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {

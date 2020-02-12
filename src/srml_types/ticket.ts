@@ -33,7 +33,7 @@ class Ticket
   declare onChainSecret: Hash
 
   getEmbeddedFunds() {
-    return this.amount.mul(new BN(this.winProb)).div(new BN(new Uint8Array(Hash.length).fill(0xff)))
+    return this.amount.mul(new BN(this.winProb)).div(new BN(new Uint8Array(Hash.SIZE).fill(0xff)))
   }
 
   static get SIZE(): number {
@@ -50,7 +50,7 @@ class Ticket
     const { secret } = await channel.hoprPolkadot.api.query.hopr.state<State>(channel.counterparty)
 
     const winProb = createTypeUnsafe<Hash>(channel.hoprPolkadot.api.registry, 'Hash', [
-      new BN(new Uint8Array(Hash.length).fill(0xff)).div(WIN_PROB).toArray('le', Hash.length)
+      new BN(new Uint8Array(Hash.SIZE).fill(0xff)).div(WIN_PROB).toArray('le', Hash.SIZE)
     ])
     const channelId = await channel.channelId
 

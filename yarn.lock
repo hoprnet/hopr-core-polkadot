@@ -11,7 +11,7 @@
 
 "@hoprnet/hopr-core-connector-interface@hoprnet/hopr-core-connector-interface":
   version "1.0.0"
-  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/3c6fc2ec03fb8dce7034655db9e026a73cf6f304"
+  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/0a790e58435554efd1e555408985ebb3cc5db369"
 
 "@hoprnet/hopr-types@hoprnet/hopr-types":
   version "0.3.0"

@@ -53,7 +53,6 @@ class Channel implements ChannelInstance {
       try {
         console.log(await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
         this._signedChannel = new SignedChannel(
-          this.hoprPolkadot,
           await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty))
         )
       } catch (err) {
@@ -256,10 +255,7 @@ class Channel implements ChannelInstance {
       hoprPolkadot.api
     )
     if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
-      signedChannel = new SignedChannel(
-        hoprPolkadot,
-        await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty))
-      )
+      signedChannel = new SignedChannel(await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)))
     } else if (sign != null && channelBalance != null) {
       const channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
 
@@ -291,7 +287,9 @@ class Channel implements ChannelInstance {
     return new Channel(hoprPolkadot, counterparty, signedChannel)
   }
 
-  static handleOpeningRequest(hoprPolkadot: HoprPolkadot): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
+  static handleOpeningRequest(
+    hoprPolkadot: HoprPolkadot
+  ): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
     return ChannelOpener.handleOpeningRequest(hoprPolkadot)
   }
 
@@ -309,7 +307,7 @@ class Channel implements ChannelInstance {
         })
         .on('error', err => reject(err))
         .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {
-          const signedChannel: SignedChannel = new SignedChannel(hoprPolkadot, value)
+          const signedChannel: SignedChannel = new SignedChannel(value)
 
           promises.push(
             Promise.resolve(

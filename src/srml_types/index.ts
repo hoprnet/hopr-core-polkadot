@@ -1,5 +1,5 @@
 import { AccountId, Balance, ChannelId, PreImage, Moment, Hash, Public, TicketEpoch } from './base'
-import { ChannelBalance, Channel, Funded } from './channel'
+import { ChannelBalance, Channel, Funded, Active, PendingSettlement } from './channel'
 import { State } from './state'
 import { Ticket } from './ticket'
 
@@ -45,5 +45,7 @@ export {
   Public,
   ChannelBalance,
   Channel,
+  Active,
+  PendingSettlement,
   Ticket
 }

@@ -12,7 +12,7 @@ class ChannelOpener {
     return (source: AsyncIterable<Uint8Array>) => {
       return (async function*() {
         for await (const msg of source) {
-          const signedChannel = new SignedChannel(hoprPolkadot, msg)
+          const signedChannel = new SignedChannel(msg.slice())
 
           const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
 

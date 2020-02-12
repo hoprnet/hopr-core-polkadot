@@ -1,4 +1,3 @@
-
 import assert from 'assert'
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import Keyring from '@polkadot/keyring'
@@ -8,7 +7,7 @@ import { EventSignalling } from './events'
 import { Types, SRMLTypes, Balance, Ticket } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
-import UtilsClass from './utils'
+import { Utils as UtilsClass } from './utils'
 import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
 import { DEFAULT_URI } from './config'
@@ -108,7 +107,7 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
   }
 
   readonly utils = Utils
-  
+
   readonly types = Types
 
   readonly channel = Channel

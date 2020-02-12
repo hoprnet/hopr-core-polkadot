@@ -8,7 +8,7 @@ import { Types } from '@hoprnet/hopr-core-connector-interface'
 import { Ticket } from './ticket'
 import { Signature } from './signature'
 
-import Utils from '../utils'
+import { Utils } from '../utils'
 
 const utils = new Utils()
 

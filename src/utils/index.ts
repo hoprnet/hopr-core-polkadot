@@ -12,7 +12,7 @@ import { createTypeUnsafe, TypeRegistry } from '@polkadot/types'
 
 const BYTESIZE: number = 32 // bytes
 
-export default class Utils implements IUtils {
+class Utils implements IUtils {
   /**
    * Performs an on-chain hash to the given argument.
    * @param arg argument to hash
@@ -160,21 +160,28 @@ export default class Utils implements IUtils {
     await waitReady()
 
     if (
-      !(
-          secp256k1.recover(
-            Buffer.from(signature.sr25519PublicKey),
-            Buffer.from(signature.secp256k1Signature),
-            signature.secp256k1Recovery[0]
-          )
-      ).every((value: number, index: number) => value == pubKey[index])
-    ) {
-      console.log(`is`,         (await this.pubKeyToAccountId(
-        secp256k1.recover(
+      !secp256k1
+        .recover(
           Buffer.from(signature.sr25519PublicKey),
           Buffer.from(signature.secp256k1Signature),
           signature.secp256k1Recovery[0]
         )
-      )).toU8a(), `but should be`, pubKey)
+        .every((value: number, index: number) => value == pubKey[index])
+    ) {
+      console.log(
+        `is`,
+        (
+          await this.pubKeyToAccountId(
+            secp256k1.recover(
+              Buffer.from(signature.sr25519PublicKey),
+              Buffer.from(signature.secp256k1Signature),
+              signature.secp256k1Recovery[0]
+            )
+          )
+        ).toU8a(),
+        `but should be`,
+        pubKey
+      )
       throw Error('invalid secp256k1 signature.')
     }
 
@@ -209,3 +216,5 @@ export default class Utils implements IUtils {
     return result
   }
 }
+
+export { Utils }

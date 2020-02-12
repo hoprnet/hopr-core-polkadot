@@ -4,7 +4,7 @@ import { createTypeUnsafe } from '@polkadot/types'
 import BN from 'bn.js'
 
 import { Channel as ChannelInstance } from '../channel'
-import Utils from '../utils'
+import { Utils } from '../utils'
 
 const utils = new Utils()
 

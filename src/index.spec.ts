@@ -12,8 +12,7 @@ import { createTypeUnsafe } from '@polkadot/types'
 
 import { Channel as ChannelEnum, Funded, ChannelBalance, State, SignedChannel } from './srml_types'
 
-import UtilsClass from './utils'
-const Utils = new UtilsClass()
+import * as Utils from './utils'
 
 import LevelUp from 'levelup'
 import Memdown from 'memdown'
@@ -221,7 +220,7 @@ describe('Hopr Polkadot', async function() {
       channelEnum.asFunded,
       async () =>
         Promise.resolve(
-          new SignedChannel(hoprAlice, undefined, {
+          new SignedChannel(undefined, {
             channel: channelEnum,
             signature: await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey)
           })

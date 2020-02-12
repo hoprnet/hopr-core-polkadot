@@ -8,9 +8,7 @@ import { Types } from '@hoprnet/hopr-core-connector-interface'
 import { Ticket } from './ticket'
 import { Signature } from './signature'
 
-import { Utils } from '../utils'
-
-const utils = new Utils()
+import { hash } from '../utils'
 
 class SignedTicket extends Uint8Array implements Types.SignedTicket {
   constructor(
@@ -53,7 +51,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
       try {
         resolve(
           secp256k1.recover(
-            Buffer.from(await utils.hash(this.ticket.toU8a())),
+            Buffer.from(await hash(this.ticket.toU8a())),
             Buffer.from(this.signature.signature),
             this.signature.recovery
           )

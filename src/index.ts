@@ -7,7 +7,7 @@ import { EventSignalling } from './events'
 import { Types, SRMLTypes, Balance, Ticket } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
-import { Utils as UtilsClass } from './utils'
+import * as Utils from './utils'
 import DbKeysClass from './dbKeys'
 import ConstantsClass from './constants'
 import { DEFAULT_URI } from './config'
@@ -16,7 +16,6 @@ import { Channel } from './channel'
 
 import { HoprCoreConnectorInstance } from '@hoprnet/hopr-core-connector-interface'
 
-const Utils = new UtilsClass()
 const DbKeys = new DbKeysClass()
 const Constants = new ConstantsClass()
 

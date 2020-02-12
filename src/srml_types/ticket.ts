@@ -4,13 +4,12 @@ import { createTypeUnsafe } from '@polkadot/types'
 import BN from 'bn.js'
 
 import { Channel as ChannelInstance } from '../channel'
-import { Utils } from '../utils'
-
-const utils = new Utils()
 
 import { Hash, TicketEpoch, Balance } from './base'
 import { SignedTicket } from './signedTicket'
 import { State } from './state'
+
+import { sign, hash, verify } from '../utils'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'
 
@@ -66,7 +65,7 @@ class Ticket
       }
     ])
 
-    const signature = await utils.sign(await utils.hash(ticket.toU8a()), privKey, pubKey)
+    const signature = await sign(await hash(ticket.toU8a()), privKey, pubKey)
 
     return new SignedTicket(undefined, {
       signature,
@@ -85,8 +84,8 @@ class Ticket
       return false
     }
 
-    return utils.verify(
-      await utils.hash(signedTicket.ticket.toU8a()),
+    return verify(
+      await hash(signedTicket.ticket.toU8a()),
       signedTicket.signature,
       channel.offChainCounterparty
     )

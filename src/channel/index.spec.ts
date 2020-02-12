@@ -1,6 +1,6 @@
 import assert from 'assert'
 import Memdown from 'memdown'
-import Utils from '../utils'
+import * as Utils from '../utils'
 import {
   AccountId,
   Active,
@@ -48,7 +48,7 @@ describe('test ticket generation and verification', function() {
     const keyPair = new Keyring({ type: 'sr25519' }).addFromSeed(privKey, undefined, 'sr25519')
 
     hoprPolkadot = ({
-      utils: new Utils(),
+      utils: Utils,
       db: new LevelUp(Memdown()),
       accountBalance: Promise.resolve(new Balance(registry, new BN(1234567))),
       eventSubscriptions: {
@@ -95,7 +95,7 @@ describe('test ticket generation and verification', function() {
     const counterpartysPubKey = secp256k1.publicKeyCreate(privKey)
 
     counterpartysHoprPolkadot = ({
-      utils: new Utils(),
+      utils: Utils,
       db: new LevelUp(Memdown()),
       eventSubscriptions: {
         once: (_: any, handler: any) => setTimeout(handler)
@@ -159,7 +159,7 @@ describe('test ticket generation and verification', function() {
 
     channels.set(channelId.toHex(), channelEnum)
 
-    const signedChannel = new SignedChannel(hoprPolkadot, undefined, {
+    const signedChannel = new SignedChannel(undefined, {
       channel: channelEnum,
       signature: await hoprPolkadot.utils.sign(
         channelEnum.toU8a(),

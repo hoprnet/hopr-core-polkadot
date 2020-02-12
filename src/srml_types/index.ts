@@ -46,6 +46,8 @@ export {
   ChannelBalance,
   Channel,
   Active,
+  Funded,
   PendingSettlement,
-  Ticket
+  Ticket,
+  State
 }

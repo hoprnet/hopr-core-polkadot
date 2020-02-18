@@ -12,14 +12,17 @@ import { hash } from '../utils'
 
 class SignedTicket extends Uint8Array implements Types.SignedTicket {
   constructor(
-    arr?: Uint8Array,
+    arr?: {
+      bytes: Uint8Array
+      offset: number
+    },
     struct?: {
       signature: Signature
       ticket: Ticket
     }
   ) {
     if (arr != null && struct == null) {
-      super(arr)
+      super(arr.bytes, arr.offset, SignedTicket.SIZE)
     } else if (arr == null && struct != null) {
       const ticket = struct.ticket.toU8a()
       if (ticket.length == Ticket.SIZE) {
@@ -34,8 +37,12 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     }
   }
 
-  subarray(begin: number, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
+  subarray(begin?: number, end?: number): Uint8Array {
+    return new Uint8Array(
+      this.buffer,
+      (begin != null ? begin : 0) + this.byteOffset,
+      end != null && begin != null ? end - begin : undefined
+    )
   }
 
   get ticket(): Ticket {

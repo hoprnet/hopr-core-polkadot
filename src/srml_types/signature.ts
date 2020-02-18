@@ -9,25 +9,28 @@ const SR25519_SIGNATURE_LENGTH = 64
 
 class Signature extends Uint8Array implements Types.Signature {
   constructor(
-    arr?: Uint8Array,
-    signatures?: {
+    arr?: {
+      bytes: ArrayBuffer,
+      offset: number
+    },
+    struct?: {
       secp256k1Signature: Uint8Array
       secp256k1Recovery: number
       sr25519PublicKey: Uint8Array
       sr25519Signature: Uint8Array
     }
   ) {
-    if (arr == null && signatures != null) {
+    if (arr == null && struct != null) {
       super(
         u8aConcat(
-          signatures.secp256k1Signature,
-          new Uint8Array([signatures.secp256k1Recovery]),
-          signatures.sr25519PublicKey,
-          signatures.sr25519Signature
+          struct.secp256k1Signature,
+          new Uint8Array([struct.secp256k1Recovery]),
+          struct.sr25519PublicKey,
+          struct.sr25519Signature
         )
       )
-    } else if (arr != null && signatures == null) {
-      super(arr)
+    } else if (arr != null && struct == null) {
+      super(arr.bytes, arr.offset, Signature.SIZE)
     } else {
       throw Error('Invalid constructor arguments.')
     }

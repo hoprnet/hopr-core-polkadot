@@ -9,6 +9,8 @@ import { Balance, Moment } from './base'
 
 class SignedChannel extends Uint8Array {
   private registry: TypeRegistry
+  private _signature?: Signature
+
   constructor(
     arr?: Uint8Array,
     struct?: {
@@ -42,7 +44,14 @@ class SignedChannel extends Uint8Array {
   }
 
   get signature(): Signature {
-    return new Signature(this.subarray(0, Signature.SIZE))
+    if (this._signature == null) {
+      this._signature = new Signature({
+        bytes: this.buffer,
+        offset: this.byteOffset
+      })
+    }
+    
+    return this._signature
   }
 
   set signature(newSignature: Signature) {

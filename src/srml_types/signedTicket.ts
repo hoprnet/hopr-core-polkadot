@@ -61,7 +61,10 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
 
   get signature(): Signature {
     if (this._signature == null) {
-      this._signature = new Signature(new Uint8Array(this.buffer, this.byteOffset, Signature.SIZE))
+      this._signature = new Signature({
+        bytes: this.buffer,
+        offset: this.byteOffset
+      })
     }
 
     return this._signature

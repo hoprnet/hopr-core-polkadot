@@ -203,6 +203,9 @@ describe('test ticket generation and verification', function() {
       hoprPolkadot.self.privateKey,
       hoprPolkadot.self.publicKey
     )
+
+    assert.deepEqual(signedChannel.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
+
     counterpartysHoprPolkadot.db.put(
       hoprPolkadot.dbKeys.Channel(
         createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])

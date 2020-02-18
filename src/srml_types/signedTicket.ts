@@ -8,8 +8,6 @@ import { Types } from '@hoprnet/hopr-core-connector-interface'
 import { Ticket } from './ticket'
 import { Signature } from './signature'
 
-import { hash } from '../utils'
-
 class SignedTicket extends Uint8Array implements Types.SignedTicket {
   private _ticket?: Ticket
   private _signature?: Signature
@@ -41,7 +39,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
   }
 
   subarray(begin: number = 0, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, begin + this.byteOffset, end != null ? end - begin : undefined)
+    return new Uint8Array(this.buffer, this.byteOffset + begin, end != null ? end - begin : undefined)
   }
 
   get ticket(): Ticket {
@@ -49,7 +47,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     registry.register(Ticket)
 
     if (this._ticket == null) {
-      this._ticket = new Ticket(registry, new Uint8Array(this.buffer, this.byteOffset + Signature.SIZE, Ticket.SIZE))
+      this._ticket = new Ticket(registry, this.subarray(Signature.SIZE, Signature.SIZE + Ticket.SIZE))
     }
 
     return this._ticket
@@ -75,7 +73,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
       try {
         resolve(
           secp256k1.recover(
-            Buffer.from(await hash(this.ticket.toU8a())),
+            Buffer.from(this.ticket.hash),
             Buffer.from(this.signature.signature),
             this.signature.recovery
           )

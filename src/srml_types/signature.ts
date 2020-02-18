@@ -10,7 +10,7 @@ const SR25519_SIGNATURE_LENGTH = 64
 class Signature extends Uint8Array implements Types.Signature {
   constructor(
     arr?: {
-      bytes: ArrayBuffer,
+      bytes: ArrayBuffer
       offset: number
     },
     struct?: {
@@ -77,8 +77,8 @@ class Signature extends Uint8Array implements Types.Signature {
     return this.sr25519Signature
   }
 
-  subarray(begin: number, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, begin, end != null ? end - begin : undefined)
+  subarray(begin: number = 0, end?: number): Uint8Array {
+    return new Uint8Array(this.buffer, begin + this.byteOffset, end != null ? end - begin : undefined)
   }
 
   static get SIZE() {

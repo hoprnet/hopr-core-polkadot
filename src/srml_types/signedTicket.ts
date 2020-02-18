@@ -11,6 +11,9 @@ import { Signature } from './signature'
 import { hash } from '../utils'
 
 class SignedTicket extends Uint8Array implements Types.SignedTicket {
+  private _ticket?: Ticket
+  private _signature?: Signature
+
   constructor(
     arr?: {
       bytes: Uint8Array
@@ -49,11 +52,19 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     const registry = new TypeRegistry()
     registry.register(Ticket)
 
-    return new Ticket(registry, this.subarray(Signature.SIZE))
+    if (this._ticket == null) {
+      this._ticket = new Ticket(registry, new Uint8Array(this.buffer, this.byteOffset + Signature.SIZE, Ticket.SIZE))
+    }
+
+    return this._ticket
   }
 
   get signature(): Signature {
-    return new Signature(this.subarray(0, Signature.SIZE))
+    if (this._signature == null) {
+      this._signature = new Signature(new Uint8Array(this.buffer, this.byteOffset, Signature.SIZE))
+    }
+
+    return this._signature
   }
 
   static get SIZE() {

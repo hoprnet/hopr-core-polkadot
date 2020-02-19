@@ -198,6 +198,8 @@ describe('test ticket generation and verification', function() {
       hoprPolkadot.self.publicKey
     )
 
+    assert.deepEqual(await ticket.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable`)
+
     signedChannel.signature = await counterpartysHoprPolkadot.utils.sign(
       channelEnum.toU8a(),
       hoprPolkadot.self.privateKey,

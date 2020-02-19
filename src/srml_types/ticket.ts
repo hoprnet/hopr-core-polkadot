@@ -86,6 +86,7 @@ class Ticket
 
     return verify(signedTicket.ticket.hash, signedTicket.signature, channel.offChainCounterparty)
   }
+
   static async submit(channel: ChannelInstance, signedTicket: SignedTicket) {}
   // async aggregate(tickets: Ticket[]): Promise<Ticket> {
   //   throw Error('not implemented')

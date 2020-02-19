@@ -73,7 +73,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
       try {
         resolve(
           secp256k1.recover(
-            Buffer.from(this.ticket.hash),
+            Buffer.from(this.signature.sr25519PublicKey),
             Buffer.from(this.signature.signature),
             this.signature.recovery
           )

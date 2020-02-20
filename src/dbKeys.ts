@@ -20,7 +20,7 @@ export default class DbKeys implements IDbKeys {
   }
 
   ChannelKeyParse(arr: Uint8Array, api: ApiPromise): AccountId {
-    return api.createType('AccountId', arr.subarray(PREFIX.length + channelSubPrefix.length))
+    return api.createType('AccountId', arr.slice(PREFIX.length + channelSubPrefix.length))
   }
 
   Challenge(channelId: Hash, challenge: Hash): Uint8Array {
@@ -37,11 +37,11 @@ export default class DbKeys implements IDbKeys {
     return [
       api.createType(
         'Hash',
-        arr.subarray(PREFIX.length + channelSubPrefix.length, PREFIX.length + channelSubPrefix.length + Hash.SIZE)
+        arr.slice(PREFIX.length + channelSubPrefix.length, PREFIX.length + channelSubPrefix.length + Hash.SIZE)
       ),
       api.createType(
         'Hash',
-        arr.subarray(
+        arr.slice(
           PREFIX.length + channelSubPrefix.length + Hash.SIZE + SEPERATOR.length,
           PREFIX.length + channelSubPrefix.length + Hash.SIZE + SEPERATOR.length + Hash.SIZE
         )

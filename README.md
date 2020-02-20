@@ -25,12 +25,12 @@ rustc --version
 // rustc 1.40.0 (73528e339 2019-12-16)
 ```
 
-Follow the instruction stated in [`hopr-polkadot`](https://github.com/hoprnet/hopr-core). **This also includes building Substrate 1.0**. Be aware that this might take some time.
+Follow the instruction stated in [`hopr-polkadot`](https://github.com/hoprnet/hopr-polkadot). **This also includes building Substrate 1.0**. Be aware that this might take some time.
 
-Change `"polkadotBasepath"` in `src/config.json` such that it points to the directory in which [`hopr-polkadot`](https://github.com/hoprnet/hopr-core) is installed.
+Change `polkadotBasepath` in `src/config.ts` such that it points to the directory in which [`hopr-polkadot`](https://github.com/hoprnet/hopr-polkadot) is installed.
 
-```json
-"polkadotBasepath": "../../hopr-polkadot"
+```ts
+export const polkadotBasepath = "../../hopr-polkadot"
 ```
 
 Once that is done, run:

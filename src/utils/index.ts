@@ -258,6 +258,6 @@ export function u8aEquals(a: Uint8Array, b: Uint8Array, ...arrays: Uint8Array[])
 }
 
 // @TODO proper intgration of decimals
-export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string) {
-  return amount.toString()
+export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string): BN  {
+  return amount
 }

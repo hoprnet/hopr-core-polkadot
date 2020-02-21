@@ -6,6 +6,7 @@ import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import secp256k1 from 'secp256k1'
 import chalk from 'chalk'
 import { createTypeUnsafe, TypeRegistry } from '@polkadot/types'
+import BN from 'bn.js'
 
 export const BYTESIZE: number = 32 // bytes
 
@@ -254,4 +255,9 @@ export function u8aEquals(a: Uint8Array, b: Uint8Array, ...arrays: Uint8Array[])
   }
 
   return true
+}
+
+// @TODO proper intgration of decimals
+export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string) {
+  return amount.toString()
 }

@@ -50,7 +50,7 @@ class SignedChannel extends Uint8Array {
         offset: this.byteOffset
       })
     }
-    
+
     return this._signature
   }
 
@@ -68,11 +68,8 @@ class SignedChannel extends Uint8Array {
   }
 
   get signer() {
-    return secp256k1.recover(
-      Buffer.from(this.signature.sr25519PublicKey),
-      Buffer.from(this.signature.signature),
-      this.signature.recovery
-    )
+    // @ts-ignore
+    return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
   }
 
   toU8a(): Uint8Array {

@@ -136,11 +136,14 @@ export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Ar
 
   // console.log(u8aToHex(keyPair.publicKey))
 
-  const signature = secp256k1.sign(Buffer.from(keyPair.publicKey), Buffer.from(privKey))
+  const signature = (secp256k1.ecdsaSign(keyPair.publicKey, privKey) as unknown) as {
+    signature: Uint8Array
+    recid: number
+  }
 
   return new Signature(undefined, {
     secp256k1Signature: signature.signature,
-    secp256k1Recovery: signature.recovery,
+    secp256k1Recovery: signature.recid,
     sr25519PublicKey: keyPair.publicKey,
     sr25519Signature: keyPair.sign(msg)
   })
@@ -157,20 +160,17 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
 
   if (
     !secp256k1
-      .recover(
-        Buffer.from(signature.sr25519PublicKey),
-        Buffer.from(signature.secp256k1Signature),
-        signature.secp256k1Recovery[0]
-      )
+      // @ts-ignore
+      .ecdsaRecover(signature.secp256k1Signature, signature.secp256k1Recovery[0], signature.sr25519PublicKey)
       .every((value: number, index: number) => value == pubKey[index])
   ) {
     console.log(
       `is`,
       (
         await pubKeyToAccountId(
-          secp256k1.recover(
-            Buffer.from(signature.sr25519PublicKey),
-            Buffer.from(signature.secp256k1Signature),
+          secp256k1.ecdsaRecover(
+            signature.sr25519PublicKey,
+            signature.secp256k1Signature,
             signature.secp256k1Recovery[0]
           )
         )
@@ -258,6 +258,6 @@ export function u8aEquals(a: Uint8Array, b: Uint8Array, ...arrays: Uint8Array[])
 }
 
 // @TODO proper intgration of decimals
-export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string): BN  {
+export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string): BN {
   return amount
 }

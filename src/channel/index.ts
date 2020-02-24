@@ -10,6 +10,7 @@ import HoprPolkadot from '..'
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
 import { ChannelInstance } from '@hoprnet/hopr-core-connector-interface'
+import BN from 'bn.js'
 
 class Channel implements ChannelInstance {
   private _signedChannel: SignedChannel
@@ -238,6 +239,14 @@ class Channel implements ChannelInstance {
     return onChain && offChain
   }
 
+  /**
+   * Checks whether the channel is open and opens that channel if necessary.
+   * @param hoprPolkadot the connector instance
+   * @param offChainCounterparty public key used off-chain
+   * @param getOnChainPublicKey yields the on-chain identity
+   * @param channelBalance desired channel balance
+   * @param sign signing provider
+   */
   static async create(
     hoprPolkadot: HoprPolkadot,
     offChainCounterparty: Uint8Array,
@@ -287,12 +296,22 @@ class Channel implements ChannelInstance {
     return new Channel(hoprPolkadot, counterparty, signedChannel)
   }
 
+  /**
+   * Handles the opening request received by another HOPR node.
+   * @param hoprPolkadot the connector instance
+   */
   static handleOpeningRequest(
     hoprPolkadot: HoprPolkadot
   ): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
     return ChannelOpener.handleOpeningRequest(hoprPolkadot)
   }
 
+  /**
+   * Get all channels from the database.
+   * @param hoprPolkadot the connector instance
+   * @param onData function that is applied on every entry, cf. `map`
+   * @param onEnd function that is applied at the end, cf. `reduce`
+   */
   static getAll<T, R>(
     hoprPolkadot: HoprPolkadot,
     onData: (channel: Channel) => Promise<T>,
@@ -310,43 +329,55 @@ class Channel implements ChannelInstance {
           const signedChannel: SignedChannel = new SignedChannel(value)
 
           promises.push(
-            Promise.resolve(
-              onData(
-                new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), signedChannel)
-              )
-            )
+            onData(new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), signedChannel))
           )
         })
         .on('end', () => resolve(onEnd(promises)))
     })
   }
 
+  /**
+   * Tries to close all channels and returns the finally received funds.
+   * @notice returns `0` if there are no open channels and/or we have not received any funds.
+   * @param hoprPolkadot the connector instance
+   */
   static async closeChannels(hoprPolkadot: HoprPolkadot): Promise<Balance> {
+    const result = new BN(0)
     return Channel.getAll(
       hoprPolkadot,
-      (channel: Channel) => channel.initiateSettlement(),
+      (channel: Channel) =>
+        channel.initiateSettlement().then(() => {
+          // @TODO add balance
+          result.iaddn(0)
+        }),
       async (promises: Promise<void>[]) => {
-        return Promise.all(promises).then(() => hoprPolkadot.api.createType('Balance', 0))
+        await Promise.all(promises)
+
+        return hoprPolkadot.api.createType('Balance', result)
       }
     )
   }
 
+  /**
+   * Checks whether this signature has already been used.
+   * @param signature signature to check
+   */
   async testAndSetNonce(signature: Uint8Array): Promise<void> {
     await waitReady()
     const nonce = blake2b(signature, NONCE_HASH_KEY, 32)
 
     const key = this.hoprPolkadot.dbKeys.Nonce(await this.channelId, this.hoprPolkadot.api.createType('Hash', nonce))
 
-    await this.hoprPolkadot.db.get(Buffer.from(key)).then(
-      () => {
-        throw Error('Nonces must not be used twice.')
-      },
-      (err: any) => {
-        if (err.notFound == null || !err.notFound) {
-          throw err
-        }
+    try {
+      await this.hoprPolkadot.db.get(Buffer.from(key))
+    } catch (err) {
+      if (err.notFound == null || err.notFound != true) {
+        throw err
       }
-    )
+      return
+    }
+
+    throw Error('Nonces must not be used twice.')
   }
 }
 

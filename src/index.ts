@@ -152,6 +152,8 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
       types: SRMLTypes
     })
 
+    await waitReady()
+
     let hoprKeyPair: HoprKeyPair
     if (seed != null) {
       hoprKeyPair = {

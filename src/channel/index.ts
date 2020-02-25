@@ -153,12 +153,14 @@ class Channel implements ChannelInstance {
   async initiateSettlement(): Promise<void> {
     let channelSettler: ChannelSettler
 
+    const [channelId, settlementWindow] = await Promise.all([this.channelId, this.settlementWindow])
+
     try {
       channelSettler = await ChannelSettler.create({
         hoprPolkadot: this.hoprPolkadot,
         counterparty: this.counterparty,
-        channelId: await this.channelId,
-        settlementWindow: await this.settlementWindow
+        channelId,
+        settlementWindow
       })
     } catch (err) {
       throw err
@@ -218,7 +220,6 @@ class Channel implements ChannelInstance {
       hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)).then(
         () => true,
         (err: any) => {
-          console.log(err)
           if (err.notFound) {
             return false
           } else {

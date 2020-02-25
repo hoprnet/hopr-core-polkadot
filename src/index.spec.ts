@@ -51,9 +51,9 @@ describe('Hopr Polkadot', async function() {
 
     await cryptoWaitReady()
 
-    const AlicesPrivateKey = Buffer.from(DEMO_ACCOUNTS[0].replace(/0x/, ''), 'hex')
+    const AlicesPrivateKey = Utils.stringToU8a(DEMO_ACCOUNTS[0])
 
-    const BobsPrivateKey = Buffer.from(DEMO_ACCOUNTS[1].replace(/0x/, ''), 'hex')
+    const BobsPrivateKey = Utils.stringToU8a(DEMO_ACCOUNTS[1])
 
     const AlicesPublicKey = secp256k1.publicKeyCreate(AlicesPrivateKey)
     const BobsPublicKey = secp256k1.publicKeyCreate(BobsPrivateKey)

@@ -1,7 +1,6 @@
 import assert from 'assert'
 
 import HoprPolkadot from '.'
-import secp256k1 from 'secp256k1'
 
 import { spawn, ChildProcess } from 'child_process'
 import { existsSync } from 'fs'
@@ -32,9 +31,6 @@ describe('Hopr Polkadot', async function() {
   const target = 'debug'
   const binaryPath: string = resolve(path, `target/${target}`)
 
-  let Alice: KeyPair
-  let Bob: KeyPair
-
   let polkadotNode: ChildProcess
 
   let hoprAlice: HoprPolkadot
@@ -50,23 +46,6 @@ describe('Hopr Polkadot', async function() {
     await buildSubstrateModule(path, target)
 
     await cryptoWaitReady()
-
-    const AlicesPrivateKey = Utils.stringToU8a(DEMO_ACCOUNTS[0])
-
-    const BobsPrivateKey = Utils.stringToU8a(DEMO_ACCOUNTS[1])
-
-    const AlicesPublicKey = secp256k1.publicKeyCreate(AlicesPrivateKey)
-    const BobsPublicKey = secp256k1.publicKeyCreate(BobsPrivateKey)
-
-    Bob = {
-      privateKey: BobsPrivateKey,
-      publicKey: BobsPublicKey
-    }
-
-    Alice = {
-      privateKey: AlicesPrivateKey,
-      publicKey: AlicesPublicKey
-    }
   })
 
   beforeEach(async function() {
@@ -81,8 +60,8 @@ describe('Hopr Polkadot', async function() {
 
     await Utils.wait(14 * 1000)
     ;[hoprAlice, hoprBob] = await Promise.all([
-      HoprPolkadot.create(LevelUp(Memdown()), Alice),
-      HoprPolkadot.create(LevelUp(Memdown()), Bob)
+      HoprPolkadot.create(LevelUp(Memdown()), Utils.stringToU8a(DEMO_ACCOUNTS[0])),
+      HoprPolkadot.create(LevelUp(Memdown()), Utils.stringToU8a(DEMO_ACCOUNTS[1]))
     ])
 
     await Promise.all([

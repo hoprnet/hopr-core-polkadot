@@ -3,7 +3,7 @@ import Keyring from '@polkadot/keyring'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, Ticket } from './srml_types'
+import { Types, SRMLTypes, Balance, State, Ticket, Public, Hash } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import * as Utils from './utils'
@@ -80,10 +80,6 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
    * @param nonce set nonce manually for batch operations
    */
   async initOnchainValues(nonce?: number): Promise<void> {
-    if (!this.started) {
-      throw Error('Module is not yet fully initialised.')
-    }
-
     let secret = new Uint8Array(randomBytes(32))
 
     const dbPromise = this.db.put(this.dbKeys.OnChainSecret(), secret.slice())
@@ -147,7 +143,7 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
       provider: string
     }
   ): Promise<HoprPolkadotClass> {
-    const api = ApiPromise.create({
+    const apiPromise = ApiPromise.create({
       provider: new WsProvider(options != null && options.provider ? options.provider : DEFAULT_URI),
       types: SRMLTypes
     })
@@ -188,6 +184,42 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
       throw Error('Invalid input parameters.')
     }
 
-    return new HoprPolkadotClass(await api, hoprKeyPair, db)
+    const api = await apiPromise
+
+    const result = new HoprPolkadotClass(api, hoprKeyPair, db)
+    if (!(await checkOnChainValues(api, db, hoprKeyPair.keyPair))) {
+      await result.initOnchainValues()
+    }
+
+    return result
   }
+}
+
+async function checkOnChainValues(api: ApiPromise, db: LevelUp, keyPair: KeyringPair) {
+  let offChain: boolean
+  let secret: Uint8Array = new Uint8Array()
+  try {
+    secret = await db.get(DbKeys.OnChainSecret())
+    offChain = true
+  } catch (err) {
+    if (err.notFound != true) {
+      throw err
+    }
+    offChain = false
+  }
+
+  const state = await api.query.hopr.states<State>(keyPair.publicKey)
+  const onChain =
+    !Utils.u8aEquals(state.pubkey, new Uint8Array(Public.SIZE).fill(0x00)) ||
+    !Utils.u8aEquals(state.secret, new Uint8Array(Hash.SIZE).fill(0x00))
+
+  if (offChain != onChain) {
+    if (offChain) {
+      await api.tx.hopr.init(api.createType('Hash', keyPair.publicKey), secret).signAndSend(keyPair)
+    } else {
+      throw Error(`Key is present on-chain but not in our database.`)
+    }
+  }
+
+  return offChain && onChain
 }

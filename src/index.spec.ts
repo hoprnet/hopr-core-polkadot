@@ -70,12 +70,10 @@ describe('Hopr Polkadot', async function() {
       hoprBob.start()
     ])
 
-    const [first, second, third] = [await hoprAlice.nonce, await hoprAlice.nonce, await hoprAlice.nonce]
+    const [first, second] = [await hoprAlice.nonce, await hoprAlice.nonce]
 
     await Promise.all([
       /* prettier-ignore */
-      hoprAlice.initOnchainValues(first),
-      hoprBob.initOnchainValues(),
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
@@ -84,7 +82,7 @@ describe('Hopr Polkadot', async function() {
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(hoprAlice.self.keyPair, { nonce: second }),
+        .signAndSend(hoprAlice.self.keyPair, { nonce: first }),
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
@@ -93,7 +91,7 @@ describe('Hopr Polkadot', async function() {
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(hoprAlice.self.keyPair, { nonce: third })
+        .signAndSend(hoprAlice.self.keyPair, { nonce: second })
     ])
 
     await Utils.waitForNextBlock(hoprAlice.api)

@@ -1,12 +1,12 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 
-import { DEMO_ACCOUNTS, DEFAULT_URI } from '../src/config'
+import { DEMO_ACCOUNTS, DEFAULT_URI } from '../config'
 import Keyring from '@polkadot/keyring'
 import { KeyringPair } from '@polkadot/keyring/types'
 import { waitReady } from '@polkadot/wasm-crypto'
-import { SRMLTypes } from '../src/srml_types'
+import { SRMLTypes } from '../srml_types'
 
-import { stringToU8a } from '../src/utils'
+import { stringToU8a } from '../utils'
 
 async function main() {
   const [api] = await Promise.all([

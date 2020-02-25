@@ -8,7 +8,5 @@
     "target": "es2019",
     "strict": true,
     "sourceMap": true
-  },
-  "include": ["src/**/*", "scripts/**/*"],
-  "exclude": ["node_modules"]
+  }
 }

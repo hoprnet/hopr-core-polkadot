@@ -143,15 +143,15 @@ export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
     db: LevelUp,
     seed?: Uint8Array,
     options?: {
-      id: number
+      id: number,
+      provider: string
     }
   ): Promise<HoprPolkadotClass> {
     const api = ApiPromise.create({
-      provider: new WsProvider(DEFAULT_URI),
+      provider: new WsProvider(options != null && options.provider ? options.provider : DEFAULT_URI),
       types: SRMLTypes
     })
 
-    let keyPair: KeyringPair
     let hoprKeyPair: HoprKeyPair
     if (seed != null) {
       hoprKeyPair = {

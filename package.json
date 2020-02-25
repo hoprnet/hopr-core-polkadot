@@ -11,6 +11,7 @@
     "test": "npx mocha"
   },
   "files": [
+    "lib/",
     "src/",
     "hopr.png",
     "tsconfig.json",

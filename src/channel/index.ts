@@ -3,7 +3,7 @@ import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
-import { u8aToHex } from '@polkadot/util'
+import { u8aToHex} from '../utils'
 
 import HoprPolkadot from '..'
 
@@ -52,7 +52,7 @@ class Channel implements ChannelInstance {
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        const record = await this.hoprPolkadot.db.get(Buffer.from(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
+        const record = await this.hoprPolkadot.db.get(u8aToHex(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
 
         this._signedChannel = new SignedChannel({
           bytes: record.buffer,
@@ -219,7 +219,7 @@ class Channel implements ChannelInstance {
         (channel: ChannelEnum) => channel != null && channel.type != 'Uninitialized',
         () => false
       ),
-      hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty))).then(
+      hoprPolkadot.db.get(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty))).then(
         () => true,
         (err: any) => {
           if (err.notFound) {
@@ -267,7 +267,7 @@ class Channel implements ChannelInstance {
       hoprPolkadot.api
     )
     if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
-      const record = await hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)))
+      const record = await hoprPolkadot.db.get(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)))
       signedChannel = new SignedChannel({
         bytes: record.buffer,
         offset: record.byteOffset
@@ -295,7 +295,7 @@ class Channel implements ChannelInstance {
         channelOpener.setActive(signedChannel)
       ])
 
-      await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
+      await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
     } else {
       throw Error('Invalid input parameters.')
     }
@@ -379,7 +379,7 @@ class Channel implements ChannelInstance {
     const key = this.hoprPolkadot.dbKeys.Nonce(await this.channelId, this.hoprPolkadot.api.createType('Hash', nonce))
 
     try {
-      await this.hoprPolkadot.db.get(Buffer.from(key))
+      await this.hoprPolkadot.db.get(u8aToHex(key))
     } catch (err) {
       if (err.notFound == null || err.notFound != true) {
         throw err

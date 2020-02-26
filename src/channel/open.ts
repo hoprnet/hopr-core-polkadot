@@ -2,6 +2,7 @@ import { Balance, AccountId, Channel as ChannelEnum, Hash, SignedChannel } from 
 
 import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
+import { u8aToHex } from '../utils'
 
 class ChannelOpener {
   private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, public channelId: Hash) {}
@@ -30,9 +31,7 @@ class ChannelOpener {
 
           channelOpener
             .onceOpen()
-            .then(() =>
-              hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
-            )
+            .then(() => hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel)))
 
           if (
             hoprPolkadot.utils.isPartyA(
@@ -50,7 +49,7 @@ class ChannelOpener {
             )
           }
 
-          await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
+          await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
 
           signedChannel.signature = await hoprPolkadot.utils.sign(
             signedChannel.channel.toU8a(),

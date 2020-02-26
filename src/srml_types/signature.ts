@@ -77,8 +77,8 @@ class Signature extends Uint8Array implements Types.Signature {
     return this.sr25519Signature
   }
 
-  subarray(begin: number = 0, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, begin + this.byteOffset, end != null ? end - begin : undefined)
+  subarray(begin: number = 0, end: number = Signature.SIZE): Uint8Array {
+    return new Uint8Array(this.buffer, begin + this.byteOffset, end - begin)
   }
 
   static get SIZE() {

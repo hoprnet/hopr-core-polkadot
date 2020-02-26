@@ -38,8 +38,8 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     }
   }
 
-  subarray(begin: number = 0, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, this.byteOffset + begin, end != null ? end - begin : undefined)
+  subarray(begin: number = 0, end: number = SignedTicket.SIZE): Uint8Array {
+    return new Uint8Array(this.buffer, begin + this.byteOffset, end - begin)
   }
 
   get ticket(): Ticket {

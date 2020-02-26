@@ -15,7 +15,7 @@ import {
   Funded
 } from '../srml_types'
 import { TypeRegistry, createType } from '@polkadot/types'
-import HoprPolkadot, { Types } from '..'
+import HoprPolkadot from '..'
 import { randomBytes } from 'crypto'
 import secp256k1 from 'secp256k1'
 import BN from 'bn.js'
@@ -175,12 +175,14 @@ describe('test ticket generation and verification', function() {
       )
     })
 
-    hoprPolkadot.db.put(
-      Buffer.from(hoprPolkadot.dbKeys.Channel(
-        createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
-          counterpartysHoprPolkadot.self.keyPair.publicKey
-        ])
-      )),
+    await hoprPolkadot.db.put(
+      Utils.u8aToHex(
+        hoprPolkadot.dbKeys.Channel(
+          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
+            counterpartysHoprPolkadot.self.keyPair.publicKey
+          ])
+        )
+      ),
       Buffer.from(signedChannel)
     )
 
@@ -191,7 +193,8 @@ describe('test ticket generation and verification', function() {
         Promise.resolve(
           counterpartysHoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
         ),
-      signedChannel.channel.asFunded
+      signedChannel.channel.asFunded,
+      () => Promise.resolve(signedChannel)
     )
 
     const preImage = randomBytes(32)
@@ -216,10 +219,11 @@ describe('test ticket generation and verification', function() {
     assert.deepEqual(signedChannel.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
 
     counterpartysHoprPolkadot.db.put(
-      Buffer.from(
-      hoprPolkadot.dbKeys.Channel(
-        createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
-      )),
+      Utils.u8aToHex(
+        hoprPolkadot.dbKeys.Channel(
+          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
+        )
+      ),
       Buffer.from(signedChannel)
     )
 

@@ -45,8 +45,8 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     })
   }
 
-  subarray(begin: number = 0, end?: number): Uint8Array {
-    return new Uint8Array(this.buffer, begin + this.byteOffset, end != null ? end - begin : undefined)
+  subarray(begin: number = 0, end: number = SignedChannel.SIZE): Uint8Array {
+    return new Uint8Array(this.buffer, begin + this.byteOffset, end - begin)
   }
 
   get signature(): Signature {

@@ -52,10 +52,12 @@ class Channel implements ChannelInstance {
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        console.log(await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
-        this._signedChannel = new SignedChannel(
-          await this.hoprPolkadot.db.get(this.hoprPolkadot.dbKeys.Channel(this.counterparty))
-        )
+        const record = await this.hoprPolkadot.db.get(Buffer.from(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
+
+        this._signedChannel = new SignedChannel({
+          bytes: record.buffer,
+          offset: record.byteOffset
+        })
       } catch (err) {
         return reject(err)
       }
@@ -217,7 +219,7 @@ class Channel implements ChannelInstance {
         (channel: ChannelEnum) => channel != null && channel.type != 'Uninitialized',
         () => false
       ),
-      hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)).then(
+      hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty))).then(
         () => true,
         (err: any) => {
           if (err.notFound) {
@@ -265,7 +267,11 @@ class Channel implements ChannelInstance {
       hoprPolkadot.api
     )
     if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
-      signedChannel = new SignedChannel(await hoprPolkadot.db.get(hoprPolkadot.dbKeys.Channel(counterparty)))
+      const record = await hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)))
+      signedChannel = new SignedChannel({
+        bytes: record.buffer,
+        offset: record.byteOffset
+      })
     } else if (sign != null && channelBalance != null) {
       const channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
 
@@ -289,7 +295,7 @@ class Channel implements ChannelInstance {
         channelOpener.setActive(signedChannel)
       ])
 
-      await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+      await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
     } else {
       throw Error('Invalid input parameters.')
     }
@@ -327,7 +333,10 @@ class Channel implements ChannelInstance {
         })
         .on('error', err => reject(err))
         .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {
-          const signedChannel: SignedChannel = new SignedChannel(value)
+          const signedChannel: SignedChannel = new SignedChannel({
+            bytes: value.buffer,
+            offset: value.byteOffset
+          })
 
           promises.push(
             onData(new Channel(hoprPolkadot, hoprPolkadot.dbKeys.ChannelKeyParse(key, hoprPolkadot.api), signedChannel))

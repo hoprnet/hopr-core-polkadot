@@ -74,7 +74,6 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket {
     try {
       signer = secp256k1.ecdsaRecover(
         this.signature.signature,
-        // @ts-ignore
         this.signature.recovery,
         this.signature.sr25519PublicKey
       )

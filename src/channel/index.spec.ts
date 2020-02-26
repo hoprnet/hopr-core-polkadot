@@ -15,7 +15,7 @@ import {
   Funded
 } from '../srml_types'
 import { TypeRegistry, createType } from '@polkadot/types'
-import HoprPolkadot from '..'
+import HoprPolkadot, { Types } from '..'
 import { randomBytes } from 'crypto'
 import secp256k1 from 'secp256k1'
 import BN from 'bn.js'
@@ -26,7 +26,10 @@ import Keyring from '@polkadot/keyring'
 import { waitReady } from '@polkadot/wasm-crypto'
 import { Channel } from '.'
 
+const TEN_SECONDS = 10 * 1000
+
 describe('test ticket generation and verification', function() {
+  this.timeout(TEN_SECONDS)
   const registry = new TypeRegistry()
 
   registry.register({ AccountId, Active, Balance, Channel: ChannelEnum, ChannelId, Ticket })
@@ -39,6 +42,8 @@ describe('test ticket generation and verification', function() {
   }
 
   beforeEach(async function() {
+    this.timeout(TEN_SECONDS)
+
     await waitReady()
 
     channels.clear()
@@ -140,6 +145,8 @@ describe('test ticket generation and verification', function() {
   })
 
   it('should create a valid ticket', async function() {
+    this.timeout(TEN_SECONDS)
+
     const channelEnum = new ChannelEnum(
       registry,
       new Funded(
@@ -169,12 +176,12 @@ describe('test ticket generation and verification', function() {
     })
 
     hoprPolkadot.db.put(
-      hoprPolkadot.dbKeys.Channel(
+      Buffer.from(hoprPolkadot.dbKeys.Channel(
         createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
           counterpartysHoprPolkadot.self.keyPair.publicKey
         ])
-      ),
-      Buffer.from(signedChannel.toU8a())
+      )),
+      Buffer.from(signedChannel)
     )
 
     const channel = await Channel.create(
@@ -209,17 +216,19 @@ describe('test ticket generation and verification', function() {
     assert.deepEqual(signedChannel.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
 
     counterpartysHoprPolkadot.db.put(
+      Buffer.from(
       hoprPolkadot.dbKeys.Channel(
         createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
-      ),
-      Buffer.from(signedChannel.toU8a())
+      )),
+      Buffer.from(signedChannel)
     )
 
     const counterpartysChannel = await Channel.create(
       counterpartysHoprPolkadot,
       hoprPolkadot.self.publicKey,
       () => Promise.resolve(hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)),
-      signedChannel.channel.asFunded
+      signedChannel.channel.asFunded,
+      () => Promise.resolve(signedChannel)
     )
 
     assert(await counterpartysChannel.ticket.verify(counterpartysChannel, ticket))

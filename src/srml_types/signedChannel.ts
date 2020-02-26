@@ -7,19 +7,25 @@ import { Signature } from './signature'
 import { Channel, Funded, Uninitialized, Active, PendingSettlement, ChannelBalance } from './channel'
 import { Balance, Moment } from './base'
 
-class SignedChannel extends Uint8Array {
+import { Types } from '@hoprnet/hopr-core-connector-interface'
+
+class SignedChannel extends Uint8Array implements Types.SignedChannel {
   private registry: TypeRegistry
   private _signature?: Signature
+  private _channel?: Channel
 
   constructor(
-    arr?: Uint8Array,
+    arr?: {
+      bytes: ArrayBuffer
+      offset: number
+    },
     struct?: {
       signature: Signature
       channel: Channel
     }
   ) {
     if (arr != null && struct == null) {
-      super(arr)
+      super(arr.bytes, arr.offset, SignedChannel.SIZE)
     } else if (arr == null && struct != null) {
       super(u8aConcat(struct.signature, struct.channel.toU8a()))
     } else {
@@ -60,7 +66,14 @@ class SignedChannel extends Uint8Array {
 
   // TODO: Only expecting Funded or Active Channels
   get channel(): Channel {
-    return new Channel(this.registry, this.subarray(Signature.SIZE, Signature.SIZE + ChannelBalance.SIZE + 1))
+    if (this._channel == null) {
+      this._channel = new Channel(
+        this.registry,
+        this.subarray(Signature.SIZE, Signature.SIZE + ChannelBalance.SIZE + 1)
+      )
+    }
+
+    return this._channel
   }
 
   static get SIZE() {
@@ -68,12 +81,7 @@ class SignedChannel extends Uint8Array {
   }
 
   get signer() {
-    // @ts-ignore
     return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
-  }
-
-  toU8a(): Uint8Array {
-    return new Uint8Array(this.buffer, 0, SignedChannel.SIZE)
   }
 }
 

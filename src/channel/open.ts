@@ -12,7 +12,11 @@ class ChannelOpener {
     return (source: AsyncIterable<Uint8Array>) => {
       return (async function*() {
         for await (const msg of source) {
-          const signedChannel = new SignedChannel(msg.slice())
+          const signedChannelArray = msg.slice()
+          const signedChannel = new SignedChannel({
+            bytes: signedChannelArray.buffer,
+            offset: signedChannelArray.byteOffset
+          })
 
           const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
 
@@ -27,7 +31,7 @@ class ChannelOpener {
           channelOpener
             .onceOpen()
             .then(() =>
-              hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+              hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
             )
 
           if (
@@ -46,7 +50,7 @@ class ChannelOpener {
             )
           }
 
-          await hoprPolkadot.db.put(hoprPolkadot.dbKeys.Channel(counterparty), Buffer.from(signedChannel.toU8a()))
+          await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
 
           signedChannel.signature = await hoprPolkadot.utils.sign(
             signedChannel.channel.toU8a(),
@@ -54,7 +58,7 @@ class ChannelOpener {
             hoprPolkadot.self.publicKey
           )
 
-          yield signedChannel.toU8a()
+          yield signedChannel
         }
       })()
     }

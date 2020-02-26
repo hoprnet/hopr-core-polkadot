@@ -160,7 +160,6 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
 
   if (
     !secp256k1
-      // @ts-ignore
       .ecdsaRecover(signature.secp256k1Signature, signature.secp256k1Recovery[0], signature.sr25519PublicKey)
       .every((value: number, index: number) => value == pubKey[index])
   ) {
@@ -169,9 +168,9 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
       (
         await pubKeyToAccountId(
           secp256k1.ecdsaRecover(
-            signature.sr25519PublicKey,
             signature.secp256k1Signature,
-            signature.secp256k1Recovery[0]
+            signature.secp256k1Recovery[0],
+            signature.sr25519PublicKey
           )
         )
       ).toU8a(),
@@ -303,7 +302,6 @@ export function stringToU8a(str: string, length?: number): Uint8Array {
 
   return arr
 }
-
 
 // @TODO proper intgration of decimals
 export function convertUnit(amount: BN, sourceUnit: string, targetUnit: string): BN {

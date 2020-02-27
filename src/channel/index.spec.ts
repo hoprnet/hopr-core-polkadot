@@ -25,6 +25,8 @@ import DbKeys from '../dbKeys'
 import Keyring from '@polkadot/keyring'
 import { waitReady } from '@polkadot/wasm-crypto'
 import { Channel } from '.'
+import pipe from 'it-pipe'
+import { ChannelOpener } from './open'
 
 const TEN_SECONDS = 10 * 1000
 
@@ -164,27 +166,18 @@ describe('test ticket generation and verification', function() {
       hoprPolkadot.api
     )
 
-    channels.set(channelId.toHex(), channelEnum)
+    const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
 
-    const signedChannel = new SignedChannel(undefined, {
-      channel: channelEnum,
-      signature: await hoprPolkadot.utils.sign(
-        channelEnum.toU8a(),
-        counterpartysHoprPolkadot.self.privateKey,
-        counterpartysHoprPolkadot.self.publicKey
-      )
-    })
-
-    await hoprPolkadot.db.put(
-      Utils.u8aToHex(
-        hoprPolkadot.dbKeys.Channel(
-          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
-            counterpartysHoprPolkadot.self.keyPair.publicKey
-          ])
-        )
-      ),
-      Buffer.from(signedChannel)
-    )
+    // await hoprPolkadot.db.put(
+    //   Utils.u8aToHex(
+    //     hoprPolkadot.dbKeys.Channel(
+    //       createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
+    //         counterpartysHoprPolkadot.self.keyPair.publicKey
+    //       ])
+    //     )
+    //   ),
+    //   Buffer.from(signedChannel)
+    // )
 
     const channel = await Channel.create(
       hoprPolkadot,
@@ -194,8 +187,31 @@ describe('test ticket generation and verification', function() {
           counterpartysHoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
         ),
       signedChannel.channel.asFunded,
-      () => Promise.resolve(signedChannel)
+      async () => {
+        const result = await pipe(
+          [(await SignedChannel.create(hoprPolkadot, channelEnum)).subarray()],
+          ChannelOpener.handleOpeningRequest(counterpartysHoprPolkadot),
+          async (source: AsyncIterable<any>) => {
+            let result: Uint8Array
+            for await (const msg of source) {
+              if (result! == null) {
+                result = msg.slice()
+                return result
+              } else {
+                continue
+              }
+            }
+          }
+        )
+
+        return new SignedChannel({
+          bytes: result.buffer,
+          offset: result.byteOffset
+        })
+      }
     )
+
+    channels.set(channelId.toHex(), channelEnum)
 
     const preImage = randomBytes(32)
     const hash = await hoprPolkadot.utils.hash(preImage)
@@ -210,13 +226,9 @@ describe('test ticket generation and verification', function() {
 
     assert.deepEqual(await ticket.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable`)
 
-    signedChannel.signature = await counterpartysHoprPolkadot.utils.sign(
-      channelEnum.toU8a(),
-      hoprPolkadot.self.privateKey,
-      hoprPolkadot.self.publicKey
-    )
+    const signedChannelCounterparty = await SignedChannel.create(hoprPolkadot, channelEnum)
 
-    assert.deepEqual(signedChannel.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
+    assert.deepEqual(signedChannelCounterparty.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
 
     counterpartysHoprPolkadot.db.put(
       Utils.u8aToHex(
@@ -224,7 +236,7 @@ describe('test ticket generation and verification', function() {
           createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
         )
       ),
-      Buffer.from(signedChannel)
+      Buffer.from(signedChannelCounterparty)
     )
 
     const counterpartysChannel = await Channel.create(
@@ -232,7 +244,7 @@ describe('test ticket generation and verification', function() {
       hoprPolkadot.self.publicKey,
       () => Promise.resolve(hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)),
       signedChannel.channel.asFunded,
-      () => Promise.resolve(signedChannel)
+      () => Promise.resolve(signedChannelCounterparty)
     )
 
     assert(await counterpartysChannel.ticket.verify(counterpartysChannel, ticket))

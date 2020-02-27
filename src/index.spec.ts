@@ -7,7 +7,7 @@ import { existsSync } from 'fs'
 import { resolve } from 'path'
 
 import { cryptoWaitReady } from '@polkadot/util-crypto'
-import { createTypeUnsafe } from '@polkadot/types'
+import pipe from 'it-pipe'
 
 import { Channel as ChannelEnum, ChannelBalance, State, SignedChannel } from './srml_types'
 
@@ -140,21 +140,15 @@ describe('Hopr Polkadot', async function() {
 
     const balance = hoprAlice.api.createType('Balance', 12345)
 
-    const channelEnum = ChannelEnum.createFunded(createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [
-      {
-        balance,
-        balance_a: balance
-      }
-    ]))
+    const channelEnum = ChannelEnum.createFunded({
+      balance,
+      balance_a: balance
+    })
 
     console.log(chalk.green('Opening channel'))
 
     assert(
-      await hoprAlice.utils.verify(
-        channelEnum.toU8a(),
-        await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey),
-        hoprBob.self.publicKey
-      ),
+      await (await SignedChannel.create(hoprAlice, channelEnum)).verify(hoprAlice),
       `check that we got a valid signature over the channel state`
     )
 
@@ -163,13 +157,28 @@ describe('Hopr Polkadot', async function() {
       hoprBob.self.publicKey,
       () => Promise.resolve(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)),
       channelEnum.asFunded,
-      async () =>
-        Promise.resolve(
-          new SignedChannel(undefined, {
-            channel: channelEnum,
-            signature: await hoprBob.utils.sign(channelEnum.toU8a(), hoprBob.self.privateKey, hoprBob.self.publicKey)
-          })
+      async () => {
+        const result = await pipe(
+          [(await SignedChannel.create(hoprAlice, channelEnum)).subarray()],
+          hoprAlice.channel.handleOpeningRequest(hoprBob),
+          async (source: AsyncIterable<any>) => {
+            let result: Uint8Array
+            for await (const msg of source) {
+              if (result! == null) {
+                result = msg.slice()
+                return result
+              } else {
+                continue
+              }
+            }
+          }
         )
+
+        return new SignedChannel({
+          bytes: result.buffer,
+          offset: result.byteOffset
+        })
+      }
     )
 
     console.log(chalk.green('channel opened'))

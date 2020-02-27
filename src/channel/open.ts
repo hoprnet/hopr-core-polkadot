@@ -31,7 +31,9 @@ class ChannelOpener {
 
           channelOpener
             .onceOpen()
-            .then(() => hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel)))
+            .then(() =>
+              hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
+            )
 
           if (
             hoprPolkadot.utils.isPartyA(
@@ -47,17 +49,16 @@ class ChannelOpener {
                 signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
               )
             )
+
+            await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
+
+            yield (
+              await SignedChannel.create(hoprPolkadot, signedChannel.channel, {
+                bytes: signedChannel.buffer,
+                offset: signedChannel.byteOffset
+              })
+            ).subarray()
           }
-
-          await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
-
-          signedChannel.signature = await hoprPolkadot.utils.sign(
-            signedChannel.channel.toU8a(),
-            hoprPolkadot.self.privateKey,
-            hoprPolkadot.self.publicKey
-          )
-
-          yield signedChannel
         }
       })()
     }

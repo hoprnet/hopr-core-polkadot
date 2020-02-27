@@ -7,6 +7,12 @@ import { Null } from '@polkadot/types'
 import { Balance, Moment } from './base'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'
+import BN from 'bn.js'
+
+type ChannelBalanceConstructor = {
+  balance: number | BN,
+  balance_a: number | BN
+}
 
 class ChannelBalance extends Struct.with({
   balance: Balance,
@@ -107,17 +113,17 @@ class Channel
     return str
   }
 
-  static createFunded(balance: ChannelBalance): Channel {
+  static createFunded(balance: ChannelBalanceConstructor | ChannelBalance): Channel {
     const registry = new TypeRegistry()
     return new Channel(registry, new Funded(registry, balance))
   }
 
-  static createActive(balance: ChannelBalance): Channel {
+  static createActive(balance: ChannelBalanceConstructor | ChannelBalance): Channel {
     const registry = new TypeRegistry()
     return new Channel(registry, new Active(registry, balance))
   }
 
-  static createPending(moment: Moment, balance: ChannelBalance): Channel {
+  static createPending(moment: BN | Moment, balance: ChannelBalanceConstructor | ChannelBalance): Channel {
     const registry = new TypeRegistry()
     return new Channel(registry, new PendingSettlement(registry, [balance, moment]))
   }

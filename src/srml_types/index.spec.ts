@@ -26,26 +26,62 @@ describe('check whether we can construct types', function() {
       'Check that values are correctly set'
     )
 
-    const fundedChannel = Channel.createFunded(channelBalance)
+    const fundedChannel = Channel.createFunded({
+      balance,
+      balance_a
+    })
 
     assert(
       fundedChannel.asFunded.balance.eq(balance) && fundedChannel.asFunded.balance_a.eq(balance_a),
       'Check that values are correctly set'
     )
 
-    const activeChannel = Channel.createActive(channelBalance)
+    const fundedChannelWithChannelBalance = Channel.createFunded(channelBalance)
+
+    assert(
+      fundedChannelWithChannelBalance.asFunded.balance.eq(balance) &&
+        fundedChannelWithChannelBalance.asFunded.balance_a.eq(balance_a),
+      'Check that values are correctly set when using a channelBalane instance'
+    )
+
+    const activeChannel = Channel.createActive({
+      balance,
+      balance_a
+    })
 
     assert(
       activeChannel.asActive.balance.eq(balance) && activeChannel.asActive.balance_a.eq(balance_a),
       'Check that values are correctly set'
     )
 
-    const moment = new Moment(registry, new BN(1001))
-    const pendingChannel = Channel.createPending(moment, channelBalance)
+    const activeChannelWithChannelBalance = Channel.createActive(channelBalance)
 
     assert(
-        pendingChannel.asPendingSettlement[0].balance.eq(balance) && pendingChannel.asPendingSettlement[0].balance_a.eq(balance_a),
-        'Check that values are correctly set'
-      )
+      activeChannelWithChannelBalance.asActive.balance.eq(balance) &&
+        activeChannelWithChannelBalance.asActive.balance_a.eq(balance_a),
+      'Check that values are correctly set when using a channelBalane instance'
+    )
+
+    const pendingChannel = Channel.createPending(new BN(1001), {
+      balance,
+      balance_a
+    })
+
+    assert(
+      pendingChannel.asPendingSettlement[0].balance.eq(balance) &&
+        pendingChannel.asPendingSettlement[0].balance_a.eq(balance_a),
+      'Check that values are correctly set'
+    )
+
+    const pendingChannelWithMomentAndChannelBalance = Channel.createPending(
+      new Moment(registry, new BN(1001)),
+      channelBalance
+    )
+
+    assert(
+      pendingChannelWithMomentAndChannelBalance.asPendingSettlement[0].balance.eq(balance) &&
+        pendingChannelWithMomentAndChannelBalance.asPendingSettlement[0].balance_a.eq(balance_a),
+      'Check that values are correctly set when using a channelBalane instance and a moment instance'
+    )
   })
 })

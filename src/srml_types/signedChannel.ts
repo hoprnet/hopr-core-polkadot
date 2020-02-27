@@ -6,8 +6,11 @@ import { TypeRegistry } from '@polkadot/types'
 import { Signature } from './signature'
 import { Channel, Funded, Uninitialized, Active, PendingSettlement, ChannelBalance } from './channel'
 import { Balance, Moment } from './base'
+import { verify, sign } from '../utils'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'
+
+import type { HoprPolkadotClass } from '../'
 
 class SignedChannel extends Uint8Array implements Types.SignedChannel {
   private registry: TypeRegistry
@@ -60,10 +63,6 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     return this._signature
   }
 
-  set signature(newSignature: Signature) {
-    this.set(newSignature, 0)
-  }
-
   // TODO: Only expecting Funded or Active Channels
   get channel(): Channel {
     if (this._channel == null) {
@@ -76,13 +75,38 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     return this._channel
   }
 
+  get signer() {
+    return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
+  }
+
+  static async create(coreConnector: HoprPolkadotClass, channel: Channel, arr?: {
+    bytes: ArrayBuffer,
+    offset: number
+  }): Promise<SignedChannel> {
+    const signature = await sign(channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey)
+
+    if (arr != null) {
+      const signedChannel = new SignedChannel(arr)
+      signedChannel.signature.set(signature, 0)
+
+      return signedChannel
+    }
+
+    return new SignedChannel(undefined, {
+      signature,
+      channel
+    })
+  }
+  
+  async verify(coreConnector: HoprPolkadotClass) {
+    return await verify(this.channel.toU8a(), this.signature, coreConnector.self.publicKey)
+  }
+
+
   static get SIZE() {
     return Signature.SIZE + ChannelBalance.SIZE + 1
   }
 
-  get signer() {
-    return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
-  }
 }
 
 export { SignedChannel }

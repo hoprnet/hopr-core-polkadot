@@ -289,6 +289,7 @@ class Channel implements ChannelInstance {
       }
 
       signedChannel = await sign(channelBalance)
+
       await Promise.all([
         /* prettier-ignore */
         channelOpener.onceOpen(),

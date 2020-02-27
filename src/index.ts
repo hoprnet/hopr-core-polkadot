@@ -33,7 +33,7 @@ export type HoprKeyPair = {
   keyPair: KeyringPair
 }
 
-export default class HoprPolkadotClass implements HoprCoreConnectorInstance {
+class HoprPolkadotClass implements HoprCoreConnectorInstance {
   private _started: boolean = false
   private _nonce?: number
 
@@ -223,3 +223,7 @@ async function checkOnChainValues(api: ApiPromise, db: LevelUp, keyPair: Keyring
 
   return offChain && onChain
 }
+
+export type { HoprPolkadotClass }
+
+export default HoprPolkadotClass

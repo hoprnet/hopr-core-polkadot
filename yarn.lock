@@ -11,7 +11,7 @@
 
 "@hoprnet/hopr-core-connector-interface@hoprnet/hopr-core-connector-interface":
   version "1.0.0"
-  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/ae273b24aa96d06840f3bcbe62d44532e2277b43"
+  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/85821b53c4e293f69049c36d933ba592af097fe1"
 
 "@polkadot/api-derive@^0.100.1":
   version "0.100.1"
@@ -295,7 +295,7 @@ asmcrypto.js@^2.3.2:
   resolved "https://registry.yarnpkg.com/asmcrypto.js/-/asmcrypto.js-2.3.2.tgz#b9f84bd0a1fb82f21f8c29cc284a707ad17bba2e"
   integrity sha512-3FgFARf7RupsZETQ1nHnhLUUvpcttcCq1iZCaVAbJZbCZ5VNRrNyvpDyHTOb0KC3llFcsyOT/a99NZcCbeiEsA==
 
-asn1.js@^5.0.1, asn1.js@^5.2.0:
+asn1.js@^5.0.1:
   version "5.3.0"
   resolved "https://registry.yarnpkg.com/asn1.js/-/asn1.js-5.3.0.tgz#439099fe9174e09cff5a54a9dda70260517e8689"
   integrity sha512-WHnQJFcOrIWT1RLOkFFBQkFVvyt9BPOOrH+Dp152Zk4R993rSzXUGPmkybIcUFhHE2d/iHH+nCaOWVCDbO8fgA==
@@ -654,11 +654,6 @@ encoding@^0.1.11:
   integrity sha1-U4tm8+5izRq1HsMjgp0flIDHS+s=
   dependencies:
     iconv-lite "~0.4.13"
-
-err-code@^1.1.2:
-  version "1.1.2"
-  resolved "https://registry.yarnpkg.com/err-code/-/err-code-1.1.2.tgz#06e0116d3028f6aef4806849eb0ea6a748ae6960"
-  integrity sha1-BuARbTAo9q70gGhJ6w6mp0iuaWA=
 
 err-code@^2.0.0:
   version "2.0.0"
@@ -1102,16 +1097,15 @@ libp2p-crypto-secp256k1@~0.4.0:
     secp256k1 "^3.6.2"
 
 libp2p-crypto@~0.17.2:
-  version "0.17.2"
-  resolved "https://registry.yarnpkg.com/libp2p-crypto/-/libp2p-crypto-0.17.2.tgz#a45a93e047fac02ed3391d772749598fdee85c3a"
-  integrity sha512-mCzxbmqJhZF6AvyJPg80dyobOd2JJZm9BDQNLAkVFvC8d29tPox+Rub9v+AK+QILj8gzzQUj2W1ZLTNLhC98Xg==
+  version "0.17.3"
+  resolved "https://registry.yarnpkg.com/libp2p-crypto/-/libp2p-crypto-0.17.3.tgz#92322ed81d1f0e3b7654cd8f4e759cdeaa5a14c0"
+  integrity sha512-MIAqYxjbERC2zMgxu96qk+E6+SbtxCUCOpVGJiPeAj5xn3JR2Jmu9W+zhR8xRg/+el0CLV+luyLegNqPj2/UZQ==
   dependencies:
     asmcrypto.js "^2.3.2"
-    asn1.js "^5.2.0"
     bn.js "^5.0.0"
     browserify-aes "^1.2.0"
     bs58 "^4.0.1"
-    err-code "^1.1.2"
+    err-code "^2.0.0"
     iso-random-stream "^1.1.0"
     keypair "^1.0.1"
     libp2p-crypto-secp256k1 "~0.4.0"

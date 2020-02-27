@@ -51,14 +51,14 @@ class ChannelOpener {
             )
 
             await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
-
-            yield (
-              await SignedChannel.create(hoprPolkadot, signedChannel.channel, {
-                bytes: signedChannel.buffer,
-                offset: signedChannel.byteOffset
-              })
-            ).subarray()
           }
+
+          yield (
+            await SignedChannel.create(hoprPolkadot, signedChannel.channel, {
+              bytes: signedChannel.buffer,
+              offset: signedChannel.byteOffset
+            })
+          ).subarray()
         }
       })()
     }

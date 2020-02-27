@@ -9,7 +9,7 @@ import { resolve } from 'path'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import pipe from 'it-pipe'
 
-import { Channel as ChannelEnum, ChannelBalance, State, SignedChannel } from './srml_types'
+import { Channel as ChannelEnum, State, SignedChannel } from './srml_types'
 
 import * as Utils from './utils'
 
@@ -18,6 +18,7 @@ import Memdown from 'memdown'
 
 import chalk from 'chalk'
 import { polkadotBasepath, DEMO_ACCOUNTS } from './config'
+import BN from 'bn.js'
 
 const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 
@@ -138,11 +139,9 @@ describe('Hopr Polkadot', async function() {
   it('should connect', async function() {
     this.timeout(TWENTY_MINUTES)
 
-    const balance = hoprAlice.api.createType('Balance', 12345)
-
     const channelEnum = ChannelEnum.createFunded({
-      balance,
-      balance_a: balance
+      balance: new BN(12345),
+      balance_a: new BN(123)
     })
 
     console.log(chalk.green('Opening channel'))

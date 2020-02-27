@@ -88,6 +88,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     if (arr != null) {
       const signedChannel = new SignedChannel(arr)
       signedChannel.signature.set(signature, 0)
+      signedChannel.set(channel.toU8a(), Signature.SIZE)
 
       return signedChannel
     }

@@ -3,6 +3,7 @@ import { Balance, AccountId, Channel as ChannelEnum, Hash, SignedChannel } from 
 import { Opened, EventHandler } from '../events'
 import HoprPolkadot from '..'
 import { u8aToHex } from '../utils'
+import chalk from 'chalk'
 
 class ChannelOpener {
   private constructor(private hoprPolkadot: HoprPolkadot, private counterparty: AccountId, public channelId: Hash) {}
@@ -108,9 +109,13 @@ class ChannelOpener {
   }
 
   async setActive(signedChannel: SignedChannel): Promise<ChannelOpener> {
-    await this.hoprPolkadot.api.tx.hopr
-      .setActive(this.counterparty, signedChannel.signature.onChainSignature)
-      .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
+    try {
+      await this.hoprPolkadot.api.tx.hopr
+        .setActive(this.counterparty, signedChannel.signature.onChainSignature)
+        .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
+    } catch (err) {
+      console.log(err)
+    }
 
     return this
   }

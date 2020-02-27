@@ -9,7 +9,7 @@ import { resolve } from 'path'
 import { cryptoWaitReady } from '@polkadot/util-crypto'
 import { createTypeUnsafe } from '@polkadot/types'
 
-import { Channel as ChannelEnum, Funded, ChannelBalance, State, SignedChannel } from './srml_types'
+import { Channel as ChannelEnum, ChannelBalance, State, SignedChannel } from './srml_types'
 
 import * as Utils from './utils'
 
@@ -129,10 +129,10 @@ describe('Hopr Polkadot', async function() {
     )
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     polkadotNode.kill()
-    hoprAlice.stop()
-    hoprBob.stop()
+    await hoprAlice.stop()
+    await hoprBob.stop()
   })
 
   it('should connect', async function() {
@@ -140,16 +140,12 @@ describe('Hopr Polkadot', async function() {
 
     const balance = hoprAlice.api.createType('Balance', 12345)
 
-    const channelEnum = createTypeUnsafe<ChannelEnum>(hoprAlice.api.registry, 'Channel', [
-      createTypeUnsafe<Funded>(hoprAlice.api.registry, 'Funded', [
-        createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [
-          {
-            balance,
-            balance_a: balance
-          }
-        ])
-      ])
-    ])
+    const channelEnum = ChannelEnum.createFunded(createTypeUnsafe<ChannelBalance>(hoprAlice.api.registry, 'ChannelBalance', [
+      {
+        balance,
+        balance_a: balance
+      }
+    ]))
 
     console.log(chalk.green('Opening channel'))
 

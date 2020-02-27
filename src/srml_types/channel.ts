@@ -1,5 +1,6 @@
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
 import { Registry } from '@polkadot/types/types'
+import { TypeRegistry } from '@polkadot/types'
 
 import { Null } from '@polkadot/types'
 
@@ -104,6 +105,21 @@ class Channel
 
     str += this.value.toString()
     return str
+  }
+
+  static createFunded(balance: ChannelBalance): Channel {
+    const registry = new TypeRegistry()
+    return new Channel(registry, new Funded(registry, balance))
+  }
+
+  static createActive(balance: ChannelBalance): Channel {
+    const registry = new TypeRegistry()
+    return new Channel(registry, new Active(registry, balance))
+  }
+
+  static createPending(moment: Moment, balance: ChannelBalance): Channel {
+    const registry = new TypeRegistry()
+    return new Channel(registry, new PendingSettlement(registry, [balance, moment]))
   }
 
   static get SIZE(): number {

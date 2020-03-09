@@ -40,6 +40,7 @@ describe('test ticket generation and verification', function() {
   let counterpartysHoprPolkadot: HoprPolkadot
   const channels = new Map<string, ChannelEnum>()
   const preChannels = new Map<string, ChannelEnum>()
+
   function onChainChannels(
     channelId: Hash,
     fn?: (channel: ChannelEnum) => void
@@ -149,17 +150,6 @@ describe('test ticket generation and verification', function() {
     )
 
     const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
-
-    // await hoprPolkadot.db.put(
-    //   Utils.u8aToHex(
-    //     hoprPolkadot.dbKeys.Channel(
-    //       createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
-    //         counterpartysHoprPolkadot.self.keyPair.publicKey
-    //       ])
-    //     )
-    //   ),
-    //   Buffer.from(signedChannel)
-    // )
 
     preChannels.set(channelId.toHex(), channelEnum)
 

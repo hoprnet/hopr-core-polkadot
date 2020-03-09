@@ -43,15 +43,15 @@ class Ticket
   static async create(
     channel: ChannelInstance,
     amount: Balance,
-    challenge: Hash,
-    privKey: Uint8Array,
-    pubKey: Uint8Array
+    challenge: Hash
   ): Promise<SignedTicket> {
-    const { secret } = await channel.hoprPolkadot.api.query.hopr.state<State>(channel.counterparty)
+    const { secret } = await channel.hoprPolkadot.api.query.hopr.states<State>(channel.counterparty)
 
-    const winProb = createTypeUnsafe<Hash>(channel.hoprPolkadot.api.registry, 'Hash', [
+    const winProb = channel.hoprPolkadot.api.createType(
+      'Hash',
       new BN(new Uint8Array(Hash.SIZE).fill(0xff)).div(WIN_PROB).toArray('le', Hash.SIZE)
-    ])
+    )
+
     const channelId = await channel.channelId
 
     const ticket = createTypeUnsafe<Ticket>(channel.hoprPolkadot.api.registry, 'Ticket', [
@@ -65,7 +65,7 @@ class Ticket
       }
     ])
 
-    const signature = await sign(ticket.hash, privKey, pubKey)
+    const signature = await sign(ticket.hash, channel.hoprPolkadot.self.privateKey, channel.hoprPolkadot.self.publicKey)
 
     return new SignedTicket(undefined, {
       signature,

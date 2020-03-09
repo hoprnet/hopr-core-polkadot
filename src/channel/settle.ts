@@ -36,7 +36,7 @@ export class ChannelSettler {
             const unsub = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
               this.props.channelId,
               (channel: ChannelEnum) => {
-                console.log(`channel has changed. ${channel.toString()}`)
+                console.log(`channel has changed.`, channel.toJSON())
                 if (channel.isPendingSettlement) {
                   setImmediate(() => {
                     unsub()

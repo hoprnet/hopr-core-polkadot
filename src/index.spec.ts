@@ -150,7 +150,7 @@ describe('Hopr Polkadot', async function() {
       `check that we got a valid signature over the channel state`
     )
 
-    const channelOpener = await hoprAlice.channel.create(
+    const channel = await hoprAlice.channel.create(
       hoprAlice,
       hoprBob.self.publicKey,
       () => Promise.resolve(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)),
@@ -189,17 +189,25 @@ describe('Hopr Polkadot', async function() {
 
     await Utils.waitForNextBlock(hoprAlice.api)
 
-    let channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
-    console.log(channel.asActive.toString())
+    let onChainChannel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+    console.log(onChainChannel.toJSON())
 
-    await channelOpener.initiateSettlement()
+    const ticket = await channel.ticket.create(
+      channel,
+      channel.hoprPolkadot.api.createType('Balance', new BN(12)),
+      channel.hoprPolkadot.api.createType('Hash', new Uint8Array(32).fill(0x00))
+    )
+
+    console.log(chalk.green(`ticket`), ticket)
+
+    await channel.initiateSettlement()
     await Utils.waitForNextBlock(hoprAlice.api)
 
-    channel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+    onChainChannel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
 
-    assert(channel.type == 'Uninitialized', `Channel should be empty`)
+    assert(onChainChannel.type == 'Uninitialized', `Channel should be empty`)
 
-    console.log(`Channel '${channel.toString()}'`)
+    console.log(`Channel `, onChainChannel.toJSON())
   })
 })
 

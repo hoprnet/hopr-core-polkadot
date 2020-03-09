@@ -92,7 +92,7 @@ describe('test ticket generation and verification', function() {
         },
         query: {
           hopr: {
-            state: () =>
+            states: () =>
               Promise.resolve({
                 epoch: new BN(0),
                 secret: createTypeUnsafe(registry, 'Hash', [new Uint8Array(32)])
@@ -203,9 +203,7 @@ describe('test ticket generation and verification', function() {
     const ticket = await channel.ticket.create(
       channel,
       new Balance(registry, 1),
-      new Hash(registry, hash),
-      hoprPolkadot.self.privateKey,
-      hoprPolkadot.self.publicKey
+      new Hash(registry, hash)
     )
 
     assert.deepEqual(await ticket.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable`)

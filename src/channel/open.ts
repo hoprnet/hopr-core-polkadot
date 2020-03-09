@@ -42,17 +42,27 @@ class ChannelOpener {
               counterparty
             )
           ) {
+            console.log(chalk.green(`Funding self`, signedChannel.channel.asFunded.balance_a.toString()))
             await channelOpener.increaseFunds(signedChannel.channel.asFunded.balance_a)
           } else {
+            console.log(
+              chalk.green(
+                `Funding counterparty`,
+                hoprPolkadot.api.createType(
+                  'Balance',
+                  signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
+                )
+              )
+            )
             await channelOpener.increaseFunds(
               hoprPolkadot.api.createType(
                 'Balance',
                 signedChannel.channel.asFunded.balance.sub(signedChannel.channel.asFunded.balance_a.toBn())
               )
             )
-
-            await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
           }
+
+          await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
 
           yield (
             await SignedChannel.create(hoprPolkadot, signedChannel.channel, {
@@ -91,17 +101,24 @@ class ChannelOpener {
     })
   }
 
-  async onceFundedByCounterparty(handler?: EventHandler): Promise<void | ChannelOpener> {
+  async onceFundedByCounterparty(channel: ChannelEnum, handler?: EventHandler): Promise<void | ChannelOpener> {
     if (handler == null) {
+      let unsubscribe: () => void
+
       return new Promise<ChannelOpener>(async resolve => {
-        const unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, _ => {
-          unsubscribe()
-          resolve(this)
-        })
+        unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
+          this.channelId,
+          (currentChannel: ChannelEnum) => {
+            if (currentChannel.isFunded && currentChannel.eq(channel)) {
+              unsubscribe()
+              resolve(this)
+            }
+          }
+        )
       })
     }
 
-    // TODO specify else
+    // @TODO implement else
 
     const unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, _ => {
       unsubscribe()

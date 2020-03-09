@@ -5,6 +5,8 @@ import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
 import { u8aToHex} from '../utils'
 
+import chalk from 'chalk'
+
 import HoprPolkadot from '..'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
@@ -281,8 +283,10 @@ class Channel implements ChannelInstance {
           counterparty
         )
       ) {
+        console.log(chalk.yellow(`increase funds self`))
         await channelOpener.increaseFunds(channelBalance.balance_a)
       } else {
+        console.log(chalk.yellow(`increase funds counterparty`))
         await channelOpener.increaseFunds(
           hoprPolkadot.api.createType('Balance', channelBalance.balance.sub(channelBalance.balance_a.toBn()))
         )
@@ -293,7 +297,8 @@ class Channel implements ChannelInstance {
       await Promise.all([
         /* prettier-ignore */
         channelOpener.onceOpen(),
-        channelOpener.setActive(signedChannel)
+        channelOpener.onceFundedByCounterparty(signedChannel.channel).then(() => channelOpener.setActive(signedChannel)
+        )
       ])
 
       await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))

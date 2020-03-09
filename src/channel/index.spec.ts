@@ -39,23 +39,37 @@ describe('test ticket generation and verification', function() {
   let hoprPolkadot: HoprPolkadot
   let counterpartysHoprPolkadot: HoprPolkadot
   const channels = new Map<string, ChannelEnum>()
-  function onChainChannels(channelId: Hash): Promise<ChannelEnum | void> {
+  const preChannels = new Map<string, ChannelEnum>()
+  function onChainChannels(
+    channelId: Hash,
+    fn?: (channel: ChannelEnum) => void
+  ): Promise<ChannelEnum | (() => void) | undefined> {
+    if (fn != null) {
+      let found = preChannels.get(channelId.toHex())
+      if (found == null) {
+        return Promise.reject(`Could not find channel ${channelId.toHex()}`)
+      }
+
+      // @TODO this is very hacky
+      setImmediate(fn, found)
+
+      return Promise.resolve(() => {})
+    }
     return Promise.resolve(channels.get(channelId.toHex()))
   }
 
-  beforeEach(async function() {
-    this.timeout(TEN_SECONDS)
-
-    await waitReady()
-
-    channels.clear()
-
+  function generateNode(): HoprPolkadot {
     const privKey = randomBytes(32)
     const pubKey = secp256k1.publicKeyCreate(privKey)
     const keyPair = new Keyring({ type: 'sr25519' }).addFromSeed(privKey, undefined, 'sr25519')
 
-    hoprPolkadot = ({
-      utils: Utils,
+    const hoprPolkadot = ({
+      utils: {
+        ...Utils,
+        waitForNextBlock() {
+          Promise.resolve()
+        }
+      },
       db: new LevelUp(Memdown()),
       accountBalance: Promise.resolve(new Balance(registry, new BN(1234567))),
       eventSubscriptions: {
@@ -98,52 +112,20 @@ describe('test ticket generation and verification', function() {
       dbKeys: new DbKeys()
     } as unknown) as HoprPolkadot
 
-    const counterpartysPrivKey = randomBytes(32)
-    const counterpartysPubKey = secp256k1.publicKeyCreate(privKey)
+    return hoprPolkadot
+  }
 
-    counterpartysHoprPolkadot = ({
-      utils: Utils,
-      db: new LevelUp(Memdown()),
-      eventSubscriptions: {
-        once: (_: any, handler: any) => setTimeout(handler)
-      },
-      accountBalance: Promise.resolve(new Balance(registry, new BN(1234567))),
-      api: {
-        tx: {
-          hopr: {
-            create: function() {
-              const signAndSend = () => Promise.resolve()
+  beforeEach(async function() {
+    this.timeout(TEN_SECONDS)
 
-              return { signAndSend }
-            },
-            setActive: function() {
-              const signAndSend = () => Promise.resolve()
+    await waitReady()
 
-              return { signAndSend }
-            }
-          }
-        },
-        query: {
-          hopr: {
-            state: () =>
-              Promise.resolve({
-                epoch: new BN(0),
-                secret: createTypeUnsafe(registry, 'Hash', [new Uint8Array(32)])
-              } as State),
-            channels: onChainChannels
-          }
-        },
-        registry,
-        createType: (type: any, ...params: any[]) => createType(registry, type, ...params)
-      },
-      nonce: Promise.resolve(0),
-      self: {
-        publicKey: counterpartysPubKey,
-        privateKey: counterpartysPrivKey,
-        keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(counterpartysPrivKey, undefined, 'sr25519')
-      },
-      dbKeys: new DbKeys()
-    } as unknown) as HoprPolkadot
+    channels.clear()
+    preChannels.clear()
+
+    hoprPolkadot = generateNode()
+
+    counterpartysHoprPolkadot = generateNode()
   })
 
   it('should create a valid ticket', async function() {
@@ -178,6 +160,8 @@ describe('test ticket generation and verification', function() {
     //   ),
     //   Buffer.from(signedChannel)
     // )
+
+    preChannels.set(channelId.toHex(), channelEnum)
 
     const channel = await Channel.create(
       hoprPolkadot,

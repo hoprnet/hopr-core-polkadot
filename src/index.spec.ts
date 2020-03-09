@@ -20,12 +20,12 @@ import chalk from 'chalk'
 import { polkadotBasepath, DEMO_ACCOUNTS } from './config'
 import BN from 'bn.js'
 
-const TWENTY_MINUTES = 20 * 60 * 60 * 1000
-
 type KeyPair = {
   privateKey: Uint8Array
   publicKey: Uint8Array
 }
+
+const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 
 describe('Hopr Polkadot', async function() {
   const path: string = resolve(__dirname, polkadotBasepath)
@@ -95,7 +95,6 @@ describe('Hopr Polkadot', async function() {
         .signAndSend(hoprAlice.self.keyPair, { nonce: second })
     ])
 
-    await Utils.waitForNextBlock(hoprAlice.api)
     await Utils.waitForNextBlock(hoprAlice.api)
 
     assert.doesNotReject(

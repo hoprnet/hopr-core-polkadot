@@ -128,7 +128,7 @@ class HoprPolkadotClass implements HoprCoreConnectorInstance {
 
   readonly constants = Constants
 
-  readonly CHAIN_NAME = `HOPR on Polkadot`
+  static CHAIN_NAME = `Polkadot`
 
   /**
    * Creates an uninitialised instance.

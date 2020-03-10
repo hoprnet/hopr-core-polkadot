@@ -4,9 +4,6 @@ lib/
 # Exclude node.js stuff
 node_modules/
 
-# Exclude keys
-.env
-
 # Exclude IDE stuff
 # .vscode/
 
@@ -14,4 +11,5 @@ node_modules/
 .packages-cache/
 yarn-error.log
 
-.DS_Store
+# Exclude OSX stuff
+**/.DS_Store

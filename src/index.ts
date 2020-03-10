@@ -128,8 +128,8 @@ class HoprPolkadotClass implements HoprCoreConnectorInstance {
 
   readonly constants = Constants
 
-  static CHAIN_NAME = `Polkadot`
-
+  static constants = Constants
+  
   /**
    * Creates an uninitialised instance.
    *

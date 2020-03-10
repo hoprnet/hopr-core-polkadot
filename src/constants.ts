@@ -4,5 +4,6 @@ export default class implements IConstants {
   HASH_LENGTH = 32
   SIGNATURE_LENGTH = 160
 
+  CHAIN_NAME = `polkadot`
   NETWORK = `testnet`
 }

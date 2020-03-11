@@ -2,6 +2,7 @@ import type { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment
 import { PushedBackSettlement } from '../events'
 import type { Event } from '@polkadot/types/interfaces'
 import type HoprPolkadot from '..'
+import { u8aToHex } from '@polkadot/util'
 
 type ChannelSettlerProps = {
   hoprPolkadot: HoprPolkadot
@@ -13,7 +14,7 @@ type ChannelSettlerProps = {
 export class ChannelSettler {
   private _end?: Moment
 
-  timer?: () => void
+  unsubscribeChannelListener?: () => void
 
   get end(): Promise<Moment> {
     if (this._end) {
@@ -56,6 +57,7 @@ export class ChannelSettler {
   }
 
   private handlers: (Function | undefined)[] = []
+  private unsubscribePushback: (() => void) | undefined
 
   private constructor(private props: ChannelSettlerProps) {}
 
@@ -70,18 +72,21 @@ export class ChannelSettler {
   }
 
   async init(): Promise<ChannelSettler> {
-    this.props.hoprPolkadot.api.tx.hopr
-      .initiateSettlement(this.props.counterparty)
-      .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
-
-    const unsubscribe = this.props.hoprPolkadot.eventSubscriptions.on(
+    this.unsubscribePushback = this.unsubscribePushback || this.props.hoprPolkadot.eventSubscriptions.on(
       PushedBackSettlement(this.props.channelId),
       (event: Event) => {
         this._end = event.data[0] as Moment
       }
     )
 
-    unsubscribe()
+    try {
+      this.props.hoprPolkadot.api.tx.hopr
+        .initiateSettlement(this.props.counterparty)
+        .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
+    } catch (err) {
+      console.log(`Tried to settle channel ${u8aToHex(this.props.channelId)} but failed due to ${err.message}`)
+    }
+    
     return this
   }
 
@@ -102,8 +107,8 @@ export class ChannelSettler {
   // }
 
   async onceClosed(): Promise<void> {
-    if (this.timer == null) {
-      this.timer = await this.timeoutFactory()
+    if (this.unsubscribeChannelListener == null) {
+      this.unsubscribeChannelListener = await this.timeoutFactory()
     }
 
     return new Promise<void>(resolve => {
@@ -125,7 +130,9 @@ export class ChannelSettler {
 
   private timeoutFactory(): Promise<() => void> {
     return new Promise<() => void>(async (resolve, reject) => {
-      let end = await this.end
+      // make sure that we have `end` cached
+      await this.end
+
       resolve(
         this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
           if (moment.gt(await this.end)) {
@@ -137,11 +144,20 @@ export class ChannelSettler {
   }
 
   private cleanHandlers() {
-    while (this.handlers.length > 0 && this.handlers[this.handlers.length - 1] === undefined) {
+    // Pops all finished out of the queue
+    while (this.handlers.length > 0 && this.handlers[this.handlers.length - 1] == null) {
       this.handlers.pop()
     }
-    if (this.handlers.length == 0 && this.timer != null) {
-      this.timer()
+    
+    if (this.handlers.length == 0) {
+      if (this.unsubscribeChannelListener != null) {
+        this.unsubscribeChannelListener()
+      }
+
+      if (this.unsubscribePushback != null) {
+        this.unsubscribePushback()
+      }
     }
+
   }
 }

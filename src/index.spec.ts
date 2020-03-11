@@ -202,11 +202,7 @@ describe('Hopr Polkadot', async function() {
     )
 
     assert(
-      await hoprBob.channel.isOpen(
-        hoprBob,
-        hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey),
-        channelId
-      )
+      await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey), channelId)
     )
 
     console.log(onChainChannel.toJSON())
@@ -227,6 +223,14 @@ describe('Hopr Polkadot', async function() {
     assert(onChainChannel.type == 'Uninitialized', `Channel should be empty`)
 
     console.log(`Channel `, onChainChannel.toJSON())
+
+    assert.rejects(
+      () =>
+        hoprAlice.db.get(
+          Buffer.from(hoprAlice.dbKeys.Channel(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)))
+        ),
+      `Check that database entry gets deleted.`
+    )
   })
 })
 

@@ -175,6 +175,8 @@ class Channel implements ChannelInstance {
       channelSettler.onceClosed().then(() => channelSettler.withdraw()),
       channelSettler.init()
     ])
+
+    await this.hoprPolkadot.db.del(Buffer.from(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
   }
 
   async getPreviousChallenges(): Promise<Hash> {

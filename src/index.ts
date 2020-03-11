@@ -11,10 +11,12 @@ import * as DbKeys from './dbKeys'
 import * as Constants from './constants'
 import { DEFAULT_URI, DEMO_ACCOUNTS } from './config'
 import secp256k1 from 'secp256k1'
-
+ 
 import { Channel } from './channel'
 
 import { HoprCoreConnectorInstance } from '@hoprnet/hopr-core-connector-interface'
+
+export { Types, Utils } 
 
 export type HoprPolkadotProps = {
   self: KeyringPair

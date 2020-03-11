@@ -5,7 +5,7 @@ import { TypeRegistry } from '@polkadot/types'
 
 import { Signature } from './signature'
 import { Channel, Funded, Uninitialized, Active, PendingSettlement, ChannelBalance } from './channel'
-import type { Balance, Moment } from './base'
+import { Balance, Moment } from './base'
 import { verify, sign } from '../utils'
 
 import { Types } from '@hoprnet/hopr-core-connector-interface'

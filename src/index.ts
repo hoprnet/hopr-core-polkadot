@@ -79,7 +79,7 @@ class HoprPolkadotClass implements HoprCoreConnectorInstance {
   async initOnchainValues(nonce?: number): Promise<void> {
     let secret = new Uint8Array(randomBytes(32))
 
-    const dbPromise = this.db.put(Utils.u8aToHex(this.dbKeys.OnChainSecret()), secret.slice())
+    const dbPromise = this.db.put(Buffer.from(this.dbKeys.OnChainSecret()), secret.slice())
 
     for (let i = 0; i < 500; i++) {
       secret = await this.utils.hash(secret)
@@ -196,7 +196,7 @@ async function checkOnChainValues(api: ApiPromise, db: LevelUp, keyPair: Keyring
   let offChain: boolean
   let secret: Uint8Array = new Uint8Array()
   try {
-    secret = await db.get(Utils.u8aToHex(DbKeys.OnChainSecret()))
+    secret = await db.get(Buffer.from(DbKeys.OnChainSecret()))
     offChain = true
   } catch (err) {
     if (err.notFound != true) {

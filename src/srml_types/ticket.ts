@@ -88,6 +88,7 @@ class Ticket
   }
 
   static async submit(channel: ChannelInstance, signedTicket: SignedTicket) {}
+  
   // async aggregate(tickets: Ticket[]): Promise<Ticket> {
   //   throw Error('not implemented')
   //   return Promise.resolve(tickets[0])

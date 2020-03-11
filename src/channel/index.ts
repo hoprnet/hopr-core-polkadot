@@ -54,7 +54,7 @@ class Channel implements ChannelInstance {
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        const record = await this.hoprPolkadot.db.get(u8aToHex(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
+        const record = await this.hoprPolkadot.db.get(Buffer.from(this.hoprPolkadot.dbKeys.Channel(this.counterparty)))
 
         this._signedChannel = new SignedChannel({
           bytes: record.buffer,
@@ -215,13 +215,13 @@ class Channel implements ChannelInstance {
    * @param hoprPolkadot the CoreConnector instance
    * @param counterparty secp256k1 public key of the counterparty
    */
-  static async isOpen(hoprPolkadot: HoprPolkadot, counterparty: AccountId, channelId: Hash) {
+  static async isOpen(hoprPolkadot: HoprPolkadot, counterparty: AccountId, channelId: Hash): Promise<boolean> {
     const [onChain, offChain]: [boolean, boolean] = await Promise.all([
       hoprPolkadot.api.query.hopr.channels<ChannelEnum>(channelId).then(
         (channel: ChannelEnum) => channel != null && channel.type != 'Uninitialized',
         () => false
       ),
-      hoprPolkadot.db.get(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty))).then(
+      hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty))).then(
         () => true,
         (err: any) => {
           if (err.notFound) {
@@ -269,7 +269,7 @@ class Channel implements ChannelInstance {
     )
 
     if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
-      const record = await hoprPolkadot.db.get(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)))
+      const record = await hoprPolkadot.db.get(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)))
       signedChannel = new SignedChannel({
         bytes: record.buffer,
         offset: record.byteOffset
@@ -387,16 +387,20 @@ class Channel implements ChannelInstance {
 
     const key = this.hoprPolkadot.dbKeys.Nonce(await this.channelId, this.hoprPolkadot.api.createType('Hash', nonce))
 
+    let found: Buffer | undefined
     try {
-      await this.hoprPolkadot.db.get(u8aToHex(key))
+      found = await this.hoprPolkadot.db.get(Buffer.from(key))
     } catch (err) {
       if (err.notFound == null || err.notFound != true) {
         throw err
-      }
-      return
+      }      
     }
 
-    throw Error('Nonces must not be used twice.')
+    if (found != null) {
+      throw Error('Nonces must not be used twice.')
+    }
+
+    await this.hoprPolkadot.db.put(Buffer.from(key), Buffer.from(''))
   }
 }
 

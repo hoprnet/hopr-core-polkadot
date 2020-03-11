@@ -229,56 +229,27 @@ describe('test ticket generation and verification', function() {
       () => Promise.resolve(signedChannelCounterparty)
     )
 
+    assert(
+      await hoprPolkadot.channel.isOpen(
+        hoprPolkadot,
+        hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey),
+        channelId
+      ),
+      `Checks that party A considers the channel open.`
+    )
+    assert(
+      await counterpartysHoprPolkadot.channel.isOpen(
+        counterpartysHoprPolkadot,
+        counterpartysHoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+        channelId
+      ),
+      `Checks that party B considers the channel open.`
+    )
+
+    await channel.testAndSetNonce(new Uint8Array(1).fill(0xff)), `Should be able to set nonce.`
+
+    assert.rejects(() => channel.testAndSetNonce(new Uint8Array(1).fill(0xff)), `Should reject when trying to set nonce twice.`)
+
     assert(await counterpartysChannel.ticket.verify(counterpartysChannel, ticket))
   })
-
-  // it('should open a channel and create a valid ticket', async function() {
-  //   const channelEnum = new ChannelEnum(
-  //     registry,
-  //     new Funded(
-  //       registry,
-  //       new ChannelBalance(registry, {
-  //         balance: new BN(123),
-  //         balance_a: new BN(122)
-  //       })
-  //     )
-  //   )
-
-  //   const signPromise = Channel.handleOpeningRequest(
-  //     counterpartysHoprPolkadot,
-  //     new SignedChannel(hoprPolkadot, undefined, {
-  //       channel: channelEnum,
-  //       signature: await hoprPolkadot.utils.sign(
-  //         channelEnum.toU8a(),
-  //         hoprPolkadot.self.privateKey,
-  //         hoprPolkadot.self.publicKey
-  //       )
-  //     }).toU8a()
-  //   )
-
-  //   const channel = await Channel.create(
-  //     hoprPolkadot,
-  //     counterpartysHoprPolkadot.self.publicKey,
-  //     () => Promise.resolve(counterpartysHoprPolkadot.self.keyPair.publicKey),
-  //     channelEnum.asFunded,
-  //     () => signPromise.then((arr: Uint8Array) => new SignedChannel(counterpartysHoprPolkadot, arr))
-  //   )
-
-  //   const preImage = randomBytes(32)
-  //   const hash = await hoprPolkadot.utils.hash(preImage)
-
-  //   const ticket = await channel.ticket.create(
-  //     channel,
-  //     new Balance(registry, 1),
-  //     new Hash(registry, hash),
-  //     hoprPolkadot.self.privateKey,
-  //     hoprPolkadot.self.publicKey
-  //   )
-
-  //   const counterpartysChannel = await Channel.create(counterpartysHoprPolkadot, hoprPolkadot.self.publicKey, () =>
-  //     Promise.resolve(hoprPolkadot.self.keyPair.publicKey)
-  //   )
-
-  //   assert(await counterpartysChannel.ticket.verify(counterpartysChannel, ticket))
-  // })
 })

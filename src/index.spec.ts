@@ -138,10 +138,11 @@ describe('Hopr Polkadot', async function() {
   it('should connect', async function() {
     this.timeout(TWENTY_MINUTES)
 
-    const channelEnum = ChannelEnum.createFunded({
+    const balance = {
       balance: new BN(12345),
       balance_a: new BN(123)
-    })
+    }
+    const channelEnum = ChannelEnum.createFunded(balance)
 
     console.log(chalk.green('Opening channel'))
 
@@ -183,12 +184,31 @@ describe('Hopr Polkadot', async function() {
 
     const channelId = await Utils.getId(
       hoprAlice.api.createType('AccountId', hoprAlice.self.keyPair.publicKey),
-      hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey),
+      hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)
     )
 
     await Utils.waitForNextBlock(hoprAlice.api)
 
     let onChainChannel = await hoprAlice.api.query.hopr.channels<ChannelEnum>(channelId)
+
+    assert(ChannelEnum.createActive(balance).eq(onChainChannel), `Channel should be active on-chain.`)
+
+    assert(
+      await hoprAlice.channel.isOpen(
+        hoprAlice,
+        hoprAlice.api.createType('Hash', hoprBob.self.keyPair.publicKey),
+        channelId
+      )
+    )
+
+    assert(
+      await hoprBob.channel.isOpen(
+        hoprBob,
+        hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey),
+        channelId
+      )
+    )
+
     console.log(onChainChannel.toJSON())
 
     const ticket = await channel.ticket.create(

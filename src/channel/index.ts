@@ -1,13 +1,14 @@
-import { Hash, Ticket, Channel as ChannelEnum, ChannelBalance, Balance, SignedChannel } from '../srml_types'
+import type { Channel as ChannelEnum, ChannelBalance, Balance } from '../srml_types'
+import { SignedChannel, Ticket, Hash } from '../srml_types'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
-import { Moment, AccountId } from '@polkadot/types/interfaces'
+import type { Moment, AccountId } from '@polkadot/types/interfaces'
 import { ChannelSettler } from './settle'
 import { ChannelOpener } from './open'
-import { u8aToHex} from '../utils'
+import { u8aToHex } from '../utils'
 
 import chalk from 'chalk'
 
-import HoprPolkadot from '..'
+import type HoprPolkadot from '..'
 
 const NONCE_HASH_KEY = Uint8Array.from(new TextEncoder().encode('Nonce'))
 
@@ -36,8 +37,7 @@ class Channel implements ChannelInstance {
       try {
         this._channelId = await this.hoprPolkadot.utils.getId(
           this.hoprPolkadot.api.createType('AccountId', this.hoprPolkadot.self.keyPair.publicKey),
-          this.counterparty,
-          this.hoprPolkadot.api
+          this.counterparty
         )
       } catch (err) {
         return reject(err)
@@ -189,14 +189,14 @@ class Channel implements ChannelInstance {
           ),
           lt: this.hoprPolkadot.dbKeys.Challenge(
             await this.channelId,
-            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00))
+            this.hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff))
           )
         })
         .on('error', reject)
         .on('data', ({ key, ownKeyHalf }) => {
           const [channelId, challenge] = this.hoprPolkadot.dbKeys.ChallengeKeyParse(key, this.hoprPolkadot.api)
 
-          // BIG TODO !!
+          // @TODO BIG TODO !!
           // replace this by proper EC-arithmetic
           pubKeys.push(this.hoprPolkadot.utils.u8aXOR(false, challenge.toU8a(), ownKeyHalf.toU8a()))
         })
@@ -265,9 +265,9 @@ class Channel implements ChannelInstance {
 
     const channelId = await hoprPolkadot.utils.getId(
       hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-      counterparty,
-      hoprPolkadot.api
+      counterparty
     )
+
     if (await this.isOpen(hoprPolkadot, counterparty, channelId)) {
       const record = await hoprPolkadot.db.get(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)))
       signedChannel = new SignedChannel({
@@ -297,11 +297,10 @@ class Channel implements ChannelInstance {
       await Promise.all([
         /* prettier-ignore */
         channelOpener.onceOpen(),
-        channelOpener.onceFundedByCounterparty(signedChannel.channel).then(() => channelOpener.setActive(signedChannel)
-        )
+        channelOpener.onceFundedByCounterparty(signedChannel.channel).then(() => channelOpener.setActive(signedChannel))
       ])
 
-      await hoprPolkadot.db.put(u8aToHex(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
+      await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
     } else {
       throw Error('Invalid input parameters.')
     }
@@ -334,8 +333,12 @@ class Channel implements ChannelInstance {
     return new Promise<R>((resolve, reject) => {
       hoprPolkadot.db
         .createReadStream({
-          gt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00))),
-          lt: hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff)))
+          gt: Buffer.from(
+            hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0x00)))
+          ),
+          lt: Buffer.from(
+            hoprPolkadot.dbKeys.Channel(hoprPolkadot.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff)))
+          )
         })
         .on('error', err => reject(err))
         .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {

@@ -1,25 +1,20 @@
 import { ApiPromise, WsProvider } from '@polkadot/api'
 import Keyring from '@polkadot/keyring'
-import { KeyringPair } from '@polkadot/keyring/types'
-import { LevelUp } from 'levelup'
+import type { KeyringPair } from '@polkadot/keyring/types'
+import type { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, State, Ticket, Public, Hash } from './srml_types'
+import { Types, SRMLTypes, Balance, State, Public, Hash } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import * as Utils from './utils'
-import DbKeysClass from './dbKeys'
-import ConstantsClass from './constants'
+import * as DbKeys from './dbKeys'
+import * as Constants from './constants'
 import { DEFAULT_URI, DEMO_ACCOUNTS } from './config'
 import secp256k1 from 'secp256k1'
 
 import { Channel } from './channel'
 
 import { HoprCoreConnectorInstance } from '@hoprnet/hopr-core-connector-interface'
-
-const DbKeys = new DbKeysClass()
-const Constants = new ConstantsClass()
-
-export { Utils, DbKeys, Constants, Channel, Types, Ticket }
 
 export type HoprPolkadotProps = {
   self: KeyringPair
@@ -129,7 +124,7 @@ class HoprPolkadotClass implements HoprCoreConnectorInstance {
   readonly constants = Constants
 
   static constants = Constants
-  
+
   /**
    * Creates an uninitialised instance.
    *

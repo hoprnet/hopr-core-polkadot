@@ -184,7 +184,6 @@ describe('Hopr Polkadot', async function() {
     const channelId = await Utils.getId(
       hoprAlice.api.createType('AccountId', hoprAlice.self.keyPair.publicKey),
       hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey),
-      hoprAlice.api
     )
 
     await Utils.waitForNextBlock(hoprAlice.api)

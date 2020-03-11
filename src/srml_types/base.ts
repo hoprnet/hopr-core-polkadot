@@ -1,8 +1,8 @@
 import { u32, u64, u128, H256 } from '@polkadot/types'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
-import {
+import type {
   AccountId as IAccountId,
   Balance as IBalance,
   Hash as IHash,

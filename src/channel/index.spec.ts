@@ -21,7 +21,7 @@ import secp256k1 from 'secp256k1'
 import BN from 'bn.js'
 import { createTypeUnsafe } from '@polkadot/types'
 import LevelUp from 'levelup'
-import DbKeys from '../dbKeys'
+import * as DbKeys from '../dbKeys'
 import Keyring from '@polkadot/keyring'
 import { waitReady } from '@polkadot/wasm-crypto'
 import { Channel } from '.'
@@ -110,7 +110,8 @@ describe('test ticket generation and verification', function() {
         privateKey: privKey,
         keyPair
       },
-      dbKeys: new DbKeys()
+      dbKeys: DbKeys,
+      channel: Channel
     } as unknown) as HoprPolkadot
 
     return hoprPolkadot
@@ -145,8 +146,7 @@ describe('test ticket generation and verification', function() {
 
     const channelId = await hoprPolkadot.utils.getId(
       hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-      hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey),
-      hoprPolkadot.api
+      hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
     )
 
     const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
@@ -190,25 +190,35 @@ describe('test ticket generation and verification', function() {
     const preImage = randomBytes(32)
     const hash = await hoprPolkadot.utils.hash(preImage)
 
-    const ticket = await channel.ticket.create(
-      channel,
-      new Balance(registry, 1),
-      new Hash(registry, hash)
-    )
+    const ticket = await channel.ticket.create(channel, new Balance(registry, 1), new Hash(registry, hash))
 
-    assert.deepEqual(await ticket.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable`)
+    assert(Utils.u8aEquals(await ticket.signer, hoprPolkadot.self.publicKey), `Check that signer is recoverable`)
 
     const signedChannelCounterparty = await SignedChannel.create(hoprPolkadot, channelEnum)
 
-    assert.deepEqual(signedChannelCounterparty.signer, hoprPolkadot.self.publicKey, `Check that signer is recoverable.`)
+    assert(
+      Utils.u8aEquals(signedChannelCounterparty.signer, hoprPolkadot.self.publicKey),
+      `Check that signer is recoverable.`
+    )
 
     counterpartysHoprPolkadot.db.put(
-      Utils.u8aToHex(
+      Buffer.from(
         hoprPolkadot.dbKeys.Channel(
           createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
         )
       ),
       Buffer.from(signedChannelCounterparty)
+    )
+
+    const dbChannels = (await counterpartysHoprPolkadot.channel.getAll(
+      counterpartysHoprPolkadot,
+      async (arg: any) => arg,
+      async (arg: any) => Promise.all(arg)
+    )) as Channel[]
+
+    assert(
+      Utils.u8aEquals(dbChannels[0].counterparty.toU8a(), hoprPolkadot.self.keyPair.publicKey),
+      `Channel record should make it into the database and its db-key should lead to the AccountId of the counterparty.`
     )
 
     const counterpartysChannel = await Channel.create(

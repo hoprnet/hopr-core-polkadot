@@ -1,6 +1,6 @@
 import { u8aConcat } from '@polkadot/util'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
 const SECP256K1_SIGNATURE_LENGTH = 64
 const SECP256K1_SIGNATURE_RECOVERY_LENGTH = 1

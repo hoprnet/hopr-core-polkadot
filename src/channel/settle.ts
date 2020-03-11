@@ -1,7 +1,7 @@
-import { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } from '../srml_types'
+import type { Hash, Channel as ChannelEnum, PendingSettlement, AccountId, Moment } from '../srml_types'
 import { PushedBackSettlement } from '../events'
-import { Event } from '@polkadot/types/interfaces'
-import HoprPolkadot from '..'
+import type { Event } from '@polkadot/types/interfaces'
+import type HoprPolkadot from '..'
 
 type ChannelSettlerProps = {
   hoprPolkadot: HoprPolkadot
@@ -47,7 +47,7 @@ export class ChannelSettler {
             )
           })
         } catch (err) {
-          return reject(`Channel state must be '${PendingSettlement.name}', but is '${channel.type}'`)
+          return reject(`Channel state must be 'PendingSettlement', but is '${channel.type}'`)
         }
       }
 

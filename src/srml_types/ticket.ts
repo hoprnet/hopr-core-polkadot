@@ -7,11 +7,11 @@ import { Channel as ChannelInstance } from '../channel'
 
 import { Hash, TicketEpoch, Balance } from './base'
 import { SignedTicket } from './signedTicket'
-import { State } from './state'
+import type { State } from './state'
 
 import { sign, verify } from '../utils'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
 const WIN_PROB = new BN(1)
 

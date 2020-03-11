@@ -3,7 +3,7 @@ import secp256k1 from 'secp256k1'
 import { TypeRegistry } from '@polkadot/types'
 import { u8aConcat } from '@polkadot/util'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
 import { Ticket } from './ticket'
 import { Signature } from './signature'

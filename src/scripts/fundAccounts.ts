@@ -2,7 +2,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api'
 
 import { DEMO_ACCOUNTS, DEFAULT_URI } from '../config'
 import Keyring from '@polkadot/keyring'
-import { KeyringPair } from '@polkadot/keyring/types'
+import type { KeyringPair } from '@polkadot/keyring/types'
 import { waitReady } from '@polkadot/wasm-crypto'
 import { SRMLTypes } from '../srml_types'
 

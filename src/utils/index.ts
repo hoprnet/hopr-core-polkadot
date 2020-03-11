@@ -1,12 +1,13 @@
-import { AccountId, Hash, Moment, Signature } from '../srml_types'
-import { ApiPromise } from '@polkadot/api'
+import type { Moment } from '../srml_types'
+import { Hash, Signature, AccountId } from '../srml_types'
+import type { ApiPromise } from '@polkadot/api'
 import { u8aConcat } from '@polkadot/util'
 import KeyRing from '@polkadot/keyring'
 import { blake2b, waitReady } from '@polkadot/wasm-crypto'
 import secp256k1 from 'secp256k1'
 import chalk from 'chalk'
 import { createTypeUnsafe, TypeRegistry } from '@polkadot/types'
-import BN from 'bn.js'
+import type BN from 'bn.js'
 
 export const BYTESIZE: number = 32 // bytes
 
@@ -46,7 +47,7 @@ export function isPartyA(self: AccountId, counterparty: AccountId): boolean {
  * @param self AccountId of ourself
  * @param counterparty AccountId of the counterparty
  */
-export async function getId(self: AccountId, counterparty: AccountId, api: ApiPromise): Promise<Hash> {
+export async function getId(self: AccountId, counterparty: AccountId): Promise<Hash> {
   const registry = new TypeRegistry()
   registry.register(Hash)
 
@@ -55,14 +56,6 @@ export async function getId(self: AccountId, counterparty: AccountId, api: ApiPr
   } else {
     return createTypeUnsafe<Hash>(registry, 'Hash', [await hash(u8aConcat(counterparty, self))])
   }
-}
-/**
- * Checks whether the content of both arrays is the same.
- * @param a first array
- * @param b second array
- */
-export function compareArray(a: Uint8Array, b: Uint8Array) {
-  return a.length == b.length && a.every((value, index) => value == b[index])
 }
 
 /**
@@ -79,10 +72,11 @@ export function waitUntil(
   until?: (api: ApiPromise, timestamp?: Moment) => boolean,
   maxBlocks?: number
 ): Promise<void> {
+  let unsubscribe: () => void
   return new Promise<void>(async (resolve, reject) => {
     const currentBlock = await api.query.timestamp.now<Moment>()
     let i: number = 0
-    const unsub = await api.query.timestamp.now<Moment>(async (timestamp: Moment) => {
+    unsubscribe = await api.query.timestamp.now<Moment>(async (timestamp: Moment) => {
       if (timestamp.gt(currentBlock)) {
         i++
 
@@ -91,7 +85,7 @@ export function waitUntil(
         if (until == null || until(api, timestamp) == true || (maxBlocks != null && i >= maxBlocks)) {
           setImmediate(() => {
             console.log(`waiting done for ${chalk.green(forWhat)}`)
-            unsub()
+            unsubscribe()
             if (until != null && maxBlocks != null && i >= maxBlocks) {
               reject()
             } else {

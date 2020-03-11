@@ -1,13 +1,13 @@
 import { Struct, Enum, Tuple } from '@polkadot/types/codec'
-import { Registry } from '@polkadot/types/types'
+import type { Registry } from '@polkadot/types/types'
 import { TypeRegistry } from '@polkadot/types'
 
 import { Null } from '@polkadot/types'
 
 import { Balance, Moment } from './base'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
-import BN from 'bn.js'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
+import type BN from 'bn.js'
 
 type ChannelBalanceConstructor = {
   balance: number | BN,

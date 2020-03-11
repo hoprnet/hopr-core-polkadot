@@ -1,9 +1,7 @@
-import { Constants as IConstants } from '@hoprnet/hopr-core-connector-interface'
+export const HASH_LENGTH = 32
 
-export default class implements IConstants {
-  HASH_LENGTH = 32
-  SIGNATURE_LENGTH = 160
+export const SIGNATURE_LENGTH = 160
 
-  CHAIN_NAME = `polkadot`
-  NETWORK = `testnet`
-}
+export const CHAIN_NAME = `polkadot`
+
+export const NETWORK = `testnet`

@@ -1,7 +1,7 @@
-import { Balance, AccountId, Channel as ChannelEnum, Hash, SignedChannel } from '../srml_types'
-
+import type { Balance, AccountId, Channel as ChannelEnum, Hash } from '../srml_types'
+import { SignedChannel } from '../srml_types'
 import { Opened, EventHandler } from '../events'
-import HoprPolkadot from '..'
+import type HoprPolkadot from '..'
 import { u8aToHex } from '../utils'
 import chalk from 'chalk'
 
@@ -25,7 +25,6 @@ class ChannelOpener {
           const channelId = await hoprPolkadot.utils.getId(
             counterparty,
             hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-            hoprPolkadot.api
           )
 
           let channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)

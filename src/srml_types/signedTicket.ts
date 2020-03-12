@@ -8,7 +8,7 @@ import type { Types } from '@hoprnet/hopr-core-connector-interface'
 import { Ticket } from './ticket'
 import { Signature } from './signature'
 
-class SignedTicket extends Uint8Array implements Types.SignedTicket {
+class SignedTicket extends Uint8Array implements Types.SignedTicket<Ticket, Signature> {
   private _ticket?: Ticket
   private _signature?: Signature
 

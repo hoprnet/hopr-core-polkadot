@@ -14,7 +14,7 @@ import secp256k1 from 'secp256k1'
  
 import { Channel } from './channel'
 
-import { HoprCoreConnectorInstance } from '@hoprnet/hopr-core-connector-interface'
+import HoprCoreConnector, { Utils as IUtils, Types as ITypes, Channel as IChannel, DbKeys as IDbKeys } from '@hoprnet/hopr-core-connector-interface'
 
 export { Types, Utils } 
 
@@ -30,7 +30,7 @@ export type HoprKeyPair = {
   keyPair: KeyringPair
 }
 
-class HoprPolkadotClass implements HoprCoreConnectorInstance {
+class HoprPolkadotClass implements HoprCoreConnector {
   private _started: boolean = false
   private _nonce?: number
 
@@ -115,13 +115,13 @@ class HoprPolkadotClass implements HoprCoreConnectorInstance {
     return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.keyPair.publicKey))
   }
 
-  readonly utils = Utils
+  readonly utils = Utils as typeof IUtils
 
-  readonly types = Types
+  readonly types = Types as typeof ITypes
 
-  readonly channel = Channel
+  readonly channel = Channel as typeof IChannel
 
-  readonly dbKeys = DbKeys
+  readonly dbKeys = DbKeys as typeof IDbKeys
 
   readonly constants = Constants
 
@@ -220,7 +220,5 @@ async function checkOnChainValues(api: ApiPromise, db: LevelUp, keyPair: Keyring
 
   return offChain && onChain
 }
-
-export type { HoprPolkadotClass }
 
 export default HoprPolkadotClass

@@ -11,7 +11,7 @@
 
 "@hoprnet/hopr-core-connector-interface@hoprnet/hopr-core-connector-interface":
   version "1.0.0"
-  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/7981c3d6cb597c21184f376ef9d344cf343a2e10"
+  resolved "https://codeload.github.com/hoprnet/hopr-core-connector-interface/tar.gz/7258390c64bc485a8f2a2adf0cfa0fac45d520df"
 
 "@polkadot/api-derive@^0.100.1":
   version "0.100.1"
@@ -217,7 +217,7 @@
   dependencies:
     "@types/node" "*"
 
-"@types/secp256k1@^3.5.0", "@types/secp256k1@~3.5.2":
+"@types/secp256k1@^3.5.0", "@types/secp256k1@^3.5.3":
   version "3.5.3"
   resolved "https://registry.yarnpkg.com/@types/secp256k1/-/secp256k1-3.5.3.tgz#57ebfdd19d476de3ff13758cf7b6d9e420d54c19"
   integrity sha512-NGcsPDR0P+Q71O63e2ayshmiZGAwCOa/cLJzOIuhOiDvmbvrCIiVtEpqdCJGogG92Bnr6tw/6lqVBsRMEl15OQ==
@@ -1223,7 +1223,7 @@ mkdirp@0.5.1:
   dependencies:
     minimist "0.0.8"
 
-mocha@^7.0.0:
+mocha@^7.1.0:
   version "7.1.0"
   resolved "https://registry.yarnpkg.com/mocha/-/mocha-7.1.0.tgz#c784f579ad0904d29229ad6cb1e2514e4db7d249"
   integrity sha512-MymHK8UkU0K15Q/zX7uflZgVoRWiTjy0fXE/QjKts6mowUvGxOdPhZ2qj3b0iZdUrNZlW9LAIMFHB4IW+2b3EQ==

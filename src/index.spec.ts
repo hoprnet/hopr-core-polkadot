@@ -193,24 +193,18 @@ describe('Hopr Polkadot', async function() {
 
     assert(ChannelEnum.createActive(balance).eq(onChainChannel), `Channel should be active on-chain.`)
 
-    assert(
-      await hoprAlice.channel.isOpen(
-        hoprAlice,
-        hoprAlice.api.createType('Hash', hoprBob.self.keyPair.publicKey),
-        channelId
-      )
-    )
+    assert(await hoprAlice.channel.isOpen(hoprAlice, hoprAlice.api.createType('Hash', hoprBob.self.keyPair.publicKey)))
 
     assert(
-      await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey), channelId)
+      await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey))
     )
 
     console.log(onChainChannel.toJSON())
 
     const ticket = await channel.ticket.create(
       channel,
-      channel.hoprPolkadot.api.createType('Balance', new BN(12)),
-      channel.hoprPolkadot.api.createType('Hash', new Uint8Array(32).fill(0x00))
+      channel.coreConnector.api.createType('Balance', new BN(12)),
+      channel.coreConnector.api.createType('Hash', new Uint8Array(32).fill(0x00))
     )
 
     console.log(chalk.green(`ticket`), ticket)

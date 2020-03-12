@@ -7,6 +7,7 @@ import { Channel as ChannelInstance } from '../channel'
 
 import { Hash, TicketEpoch, Balance } from './base'
 import { SignedTicket } from './signedTicket'
+import { Signature } from './signature'
 import type { State } from './state'
 
 import { sign, verify } from '../utils'
@@ -23,8 +24,7 @@ class Ticket
     amount: Balance,
     winProb: Hash,
     onChainSecret: Hash
-  })
-  implements Types.Ticket {
+  }) implements Types.Ticket {
   declare channelId: Hash
   declare challenge: Hash
   declare epoch: TicketEpoch
@@ -45,16 +45,16 @@ class Ticket
     amount: Balance,
     challenge: Hash
   ): Promise<SignedTicket> {
-    const { secret } = await channel.hoprPolkadot.api.query.hopr.states<State>(channel.counterparty)
+    const { secret } = await channel.coreConnector.api.query.hopr.states<State>(channel.counterparty)
 
-    const winProb = channel.hoprPolkadot.api.createType(
+    const winProb = channel.coreConnector.api.createType(
       'Hash',
       new BN(new Uint8Array(Hash.SIZE).fill(0xff)).div(WIN_PROB).toArray('le', Hash.SIZE)
     )
 
     const channelId = await channel.channelId
 
-    const ticket = createTypeUnsafe<Ticket>(channel.hoprPolkadot.api.registry, 'Ticket', [
+    const ticket = createTypeUnsafe<Ticket>(channel.coreConnector.api.registry, 'Ticket', [
       {
         channelId,
         epoch: new BN(0),
@@ -65,7 +65,7 @@ class Ticket
       }
     ])
 
-    const signature = await sign(ticket.hash, channel.hoprPolkadot.self.privateKey, channel.hoprPolkadot.self.publicKey)
+    const signature = await sign(ticket.hash, channel.coreConnector.self.privateKey, channel.coreConnector.self.publicKey)
 
     return new SignedTicket(undefined, {
       signature,
@@ -73,7 +73,7 @@ class Ticket
     })
   }
 
-  static async verify(channel: ChannelInstance, signedTicket: SignedTicket): Promise<boolean> {
+  static async verify(channel: ChannelInstance, signedTicket: Types.SignedTicket<Ticket, Signature>): Promise<boolean> {
     if ((await channel.currentBalanceOfCounterparty).add(signedTicket.ticket.amount).gt(await channel.balance)) {
       return false
     }
@@ -84,11 +84,11 @@ class Ticket
       return false
     }
 
-    return verify(signedTicket.ticket.hash, signedTicket.signature, channel.offChainCounterparty)
+    return verify(signedTicket.ticket.hash, signedTicket.signature as Signature, channel.offChainCounterparty)
   }
 
-  static async submit(channel: ChannelInstance, signedTicket: SignedTicket) {}
-  
+  static async submit(channel: ChannelInstance, signedTicket: Types.SignedTicket<Ticket, Signature>) {}
+
   // async aggregate(tickets: Ticket[]): Promise<Ticket> {
   //   throw Error('not implemented')
   //   return Promise.resolve(tickets[0])

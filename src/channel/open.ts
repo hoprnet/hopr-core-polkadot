@@ -2,7 +2,7 @@ import type { Balance, AccountId, Channel as ChannelEnum, Hash } from '../srml_t
 import { SignedChannel } from '../srml_types'
 import { Opened, EventHandler } from '../events'
 import type HoprPolkadot from '..'
-import { u8aToHex } from '../utils'
+import { u8aToHex, getId } from '../utils'
 import chalk from 'chalk'
 
 class ChannelOpener {
@@ -22,7 +22,7 @@ class ChannelOpener {
 
           const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
 
-          const channelId = await hoprPolkadot.utils.getId(
+          const channelId = await getId(
             counterparty,
             hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
           )

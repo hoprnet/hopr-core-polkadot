@@ -8,11 +8,11 @@ import { Channel, Funded, Uninitialized, Active, PendingSettlement, ChannelBalan
 import { Balance, Moment } from './base'
 import { verify, sign } from '../utils'
 
-import { Types } from '@hoprnet/hopr-core-connector-interface'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
-import type { HoprPolkadotClass } from '../'
+import type HoprPolkadot from '../'
 
-class SignedChannel extends Uint8Array implements Types.SignedChannel {
+class SignedChannel extends Uint8Array implements Types.SignedChannel<Signature> {
   private registry: TypeRegistry
   private _signature?: Signature
   private _channel?: Channel
@@ -79,7 +79,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
   }
 
-  static async create(coreConnector: HoprPolkadotClass, channel: Channel, arr?: {
+  static async create(coreConnector: HoprPolkadot, channel: Channel, arr?: {
     bytes: ArrayBuffer,
     offset: number
   }): Promise<SignedChannel> {
@@ -99,7 +99,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel {
     })
   }
   
-  async verify(coreConnector: HoprPolkadotClass) {
+  async verify(coreConnector: HoprPolkadot) {
     return await verify(this.channel.toU8a(), this.signature, coreConnector.self.publicKey)
   }
 

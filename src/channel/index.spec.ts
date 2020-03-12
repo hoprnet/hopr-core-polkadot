@@ -151,7 +151,7 @@ describe('test ticket generation and verification', function() {
 
     const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
 
-    preChannels.set(channelId.toHex(), channelEnum)
+    preChannels.set(Utils.u8aToHex(channelId), channelEnum)
 
     const channel = await Channel.create(
       hoprPolkadot,
@@ -185,7 +185,7 @@ describe('test ticket generation and verification', function() {
       }
     )
 
-    channels.set(channelId.toHex(), channelEnum)
+    channels.set(Utils.u8aToHex(channelId), channelEnum)
 
     const preImage = randomBytes(32)
     const hash = await hoprPolkadot.utils.hash(preImage)
@@ -232,23 +232,24 @@ describe('test ticket generation and verification', function() {
     assert(
       await hoprPolkadot.channel.isOpen(
         hoprPolkadot,
-        hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey),
-        channelId
+        hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
       ),
       `Checks that party A considers the channel open.`
     )
     assert(
       await counterpartysHoprPolkadot.channel.isOpen(
         counterpartysHoprPolkadot,
-        counterpartysHoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-        channelId
+        counterpartysHoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)
       ),
       `Checks that party B considers the channel open.`
     )
 
     await channel.testAndSetNonce(new Uint8Array(1).fill(0xff)), `Should be able to set nonce.`
 
-    assert.rejects(() => channel.testAndSetNonce(new Uint8Array(1).fill(0xff)), `Should reject when trying to set nonce twice.`)
+    assert.rejects(
+      () => channel.testAndSetNonce(new Uint8Array(1).fill(0xff)),
+      `Should reject when trying to set nonce twice.`
+    )
 
     assert(await counterpartysChannel.ticket.verify(counterpartysChannel, ticket))
   })

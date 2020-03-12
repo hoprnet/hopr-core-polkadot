@@ -1,5 +1,6 @@
 import type { Moment } from '../srml_types'
 import { Hash, Signature, AccountId } from '../srml_types'
+import type { Types } from '@hoprnet/hopr-core-connector-interface'
 import type { ApiPromise } from '@polkadot/api'
 import { u8aConcat } from '@polkadot/util'
 import KeyRing from '@polkadot/keyring'
@@ -37,8 +38,8 @@ export async function pubKeyToAccountId(pubkey: Uint8Array): Promise<AccountId> 
  * @param self AccountId of ourself
  * @param counterparty AccountId of the counterparty
  */
-export function isPartyA(self: AccountId, counterparty: AccountId): boolean {
-  return self < counterparty
+export function isPartyA(initiator: Types.AccountId, counterparty: Types.AccountId): boolean {
+  return initiator < counterparty
 }
 
 /**
@@ -47,7 +48,7 @@ export function isPartyA(self: AccountId, counterparty: AccountId): boolean {
  * @param self AccountId of ourself
  * @param counterparty AccountId of the counterparty
  */
-export async function getId(self: AccountId, counterparty: AccountId): Promise<Hash> {
+export async function getId(self: Types.AccountId, counterparty: Types.AccountId): Promise<Hash> {
   const registry = new TypeRegistry()
   registry.register(Hash)
 
@@ -127,8 +128,6 @@ export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Ar
   }
 
   const keyPair = new KeyRing({ type: 'sr25519' }).addFromSeed(privKey)
-
-  // console.log(u8aToHex(keyPair.publicKey))
 
   const signature = (secp256k1.ecdsaSign(keyPair.publicKey, privKey) as unknown) as {
     signature: Uint8Array

@@ -4,7 +4,7 @@ import { Channel, ChannelBalance } from './channel'
 import { TypeRegistry } from '@polkadot/types'
 import { Moment, Balance } from './base'
 import BN from 'bn.js'
-import type { HoprPolkadotClass } from '../'
+import type HoprPolkadot from '../'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import Keyring from '@polkadot/keyring'
@@ -96,7 +96,7 @@ describe('check whether we can construct types', function() {
   it('should generate a signedChannel', async function() {
     await waitReady()
 
-    const generateNode = (): HoprPolkadotClass => {
+    const generateNode = (): HoprPolkadot => {
       const privateKey = randomBytes(PRIVATE_KEY_LENGTH)
       return ({
         self: {
@@ -104,7 +104,7 @@ describe('check whether we can construct types', function() {
           publicKey: secp256k1.publicKeyCreate(privateKey),
           keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privateKey, undefined, 'sr25519')
         }
-      } as unknown) as HoprPolkadotClass
+      } as unknown) as HoprPolkadot
     }
 
     const [Alice, Bob] = [generateNode(), generateNode()]

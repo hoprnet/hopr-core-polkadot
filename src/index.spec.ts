@@ -147,7 +147,7 @@ describe('Hopr Polkadot', async function() {
     console.log(chalk.green('Opening channel'))
 
     assert(
-      await (await SignedChannel.create(hoprAlice, channelEnum)).verify(hoprAlice),
+      await (await SignedChannel.create(hoprAlice, undefined, { channel: channelEnum })).verify(hoprAlice),
       `check that we got a valid signature over the channel state`
     )
 
@@ -158,7 +158,7 @@ describe('Hopr Polkadot', async function() {
       channelEnum.asFunded,
       async () => {
         const result = await pipe(
-          [(await SignedChannel.create(hoprAlice, channelEnum)).subarray()],
+          [(await SignedChannel.create(hoprAlice, undefined, { channel: channelEnum })).subarray()],
           hoprAlice.channel.handleOpeningRequest(hoprBob),
           async (source: AsyncIterable<any>) => {
             let result: Uint8Array

@@ -149,7 +149,7 @@ describe('test ticket generation and verification', function() {
       hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.onChainKeyPair.publicKey)
     )
 
-    const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
+    const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, undefined, { channel: channelEnum })
 
     preChannels.set(Utils.u8aToHex(channelId), channelEnum)
 
@@ -163,7 +163,7 @@ describe('test ticket generation and verification', function() {
       signedChannel.channel.asFunded,
       async () => {
         const result = await pipe(
-          [(await SignedChannel.create(hoprPolkadot, channelEnum)).subarray()],
+          [(await SignedChannel.create(hoprPolkadot, undefined, { channel: channelEnum })).subarray()],
           ChannelOpener.handleOpeningRequest(counterpartysHoprPolkadot),
           async (source: AsyncIterable<any>) => {
             let result: Uint8Array
@@ -194,7 +194,7 @@ describe('test ticket generation and verification', function() {
 
     assert(Utils.u8aEquals(await ticket.signer, hoprPolkadot.self.publicKey), `Check that signer is recoverable`)
 
-    const signedChannelCounterparty = await SignedChannel.create(hoprPolkadot, channelEnum)
+    const signedChannelCounterparty = await SignedChannel.create(hoprPolkadot, undefined, { channel: channelEnum })
 
     assert(
       Utils.u8aEquals(signedChannelCounterparty.signer, hoprPolkadot.self.publicKey),

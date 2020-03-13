@@ -127,18 +127,20 @@ describe('check whether we can construct types', function() {
 
     const arr = new Uint8Array(SignedChannel.SIZE)
 
-    const signedChannel = await SignedChannel.create(Alice, channel, {
+    const signedChannel = await SignedChannel.create(Alice, {
       bytes: arr.buffer,
       offset: arr.byteOffset
-    })
+    }, { channel })
 
     assert(await signedChannel.verify(Alice))
 
-    const signedChannelNormal = await SignedChannel.create(Alice, channel)
+    const signedChannelNormal = await SignedChannel.create(Alice, undefined, { channel })
 
-    const signedChannelWithExisting = await SignedChannel.create(Alice, channel, {
+    const signedChannelWithExisting = await SignedChannel.create(Alice, {
       bytes: signedChannelNormal.buffer,
       offset: signedChannelNormal.byteOffset
+    }, {
+      channel
     })
 
     assert(await signedChannelWithExisting.verify(Alice))

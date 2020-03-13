@@ -37,7 +37,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     return new Promise(async (resolve, reject) => {
       try {
         this._channelId = await getId(
-          this.coreConnector.api.createType('AccountId', this.coreConnector.self.keyPair.publicKey),
+          this.coreConnector.api.createType('AccountId', this.coreConnector.self.onChainKeyPair.publicKey),
           this.counterparty
         )
       } catch (err) {
@@ -122,7 +122,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
   get currentBalance(): Promise<Balance> {
     if (
       this.coreConnector.utils.isPartyA(
-        this.coreConnector.api.createType('AccountId', this.coreConnector.self.keyPair.publicKey),
+        this.coreConnector.api.createType('AccountId', this.coreConnector.self.onChainKeyPair.publicKey),
         this.counterparty
       )
     ) {
@@ -137,7 +137,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
   get currentBalanceOfCounterparty(): Promise<Balance> {
     if (
       !this.coreConnector.utils.isPartyA(
-        this.coreConnector.api.createType('AccountId', this.coreConnector.self.keyPair.publicKey),
+        this.coreConnector.api.createType('AccountId', this.coreConnector.self.onChainKeyPair.publicKey),
         this.counterparty
       )
     ) {
@@ -220,7 +220,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
    */
   static async isOpen(coreConnector: HoprPolkadot, counterparty: AccountId): Promise<boolean> {
     const channelId = await coreConnector.utils.getId(
-      coreConnector.api.createType('AccountId', coreConnector.self.keyPair.publicKey),
+      coreConnector.api.createType('AccountId', coreConnector.self.onChainKeyPair.publicKey),
       counterparty
     )
 
@@ -265,14 +265,14 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     offChainCounterparty: Uint8Array,
     getOnChainPublicKey: (counterparty: Uint8Array) => Promise<Uint8Array>,
     channelBalance?: ChannelBalance,
-    sign?: (channelBalance: ChannelBalance) => Promise<Types.SignedChannel<Signature>>
+    sign?: (channelBalance: ChannelBalance) => Promise<Types.SignedChannel<ChannelEnum, Signature>>
   ): Promise<Channel> {
     let signedChannel: SignedChannel
 
     const counterparty = coreConnector.api.createType('AccountId', await getOnChainPublicKey(offChainCounterparty))
 
     const channelId = await getId(
-      coreConnector.api.createType('AccountId', coreConnector.self.keyPair.publicKey),
+      coreConnector.api.createType('AccountId', coreConnector.self.onChainKeyPair.publicKey),
       counterparty
     )
 
@@ -287,7 +287,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
 
       if (
         coreConnector.utils.isPartyA(
-          coreConnector.api.createType('AccountId', coreConnector.self.keyPair.publicKey),
+          coreConnector.api.createType('AccountId', coreConnector.self.onChainKeyPair.publicKey),
           counterparty
         )
       ) {

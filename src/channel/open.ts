@@ -24,7 +24,7 @@ class ChannelOpener {
 
           const channelId = await getId(
             counterparty,
-            hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+            hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey),
           )
 
           let channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
@@ -37,7 +37,7 @@ class ChannelOpener {
 
           if (
             hoprPolkadot.utils.isPartyA(
-              hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
+              hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey),
               counterparty
             )
           ) {
@@ -85,7 +85,7 @@ class ChannelOpener {
 
     await this.hoprPolkadot.api.tx.hopr
       .create(newAmount.toU8a(), this.counterparty)
-      .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
+      .signAndSend(this.hoprPolkadot.self.onChainKeyPair, { nonce: await this.hoprPolkadot.nonce })
 
     return this
   }
@@ -128,7 +128,7 @@ class ChannelOpener {
     try {
       await this.hoprPolkadot.api.tx.hopr
         .setActive(this.counterparty, signedChannel.signature.onChainSignature)
-        .signAndSend(this.hoprPolkadot.self.keyPair, { nonce: await this.hoprPolkadot.nonce })
+        .signAndSend(this.hoprPolkadot.self.onChainKeyPair, { nonce: await this.hoprPolkadot.nonce })
     } catch (err) {
       console.log(err)
     }

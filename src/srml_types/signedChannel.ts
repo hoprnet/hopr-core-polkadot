@@ -12,7 +12,7 @@ import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
 import type HoprPolkadot from '../'
 
-class SignedChannel extends Uint8Array implements Types.SignedChannel<Signature> {
+class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, Signature> {
   private registry: TypeRegistry
   private _signature?: Signature
   private _channel?: Channel

@@ -78,21 +78,21 @@ describe('Hopr Polkadot', async function() {
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
-            hoprAlice.self.keyPair.publicKey,
+            hoprAlice.self.onChainKeyPair.publicKey,
             hoprAlice.api.createType('Balance', 1234567),
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(hoprAlice.self.keyPair, { nonce: first }),
+        .signAndSend(hoprAlice.self.onChainKeyPair, { nonce: first }),
       hoprAlice.api.tx.sudo
         .sudo(
           hoprAlice.api.tx.balances.setBalance(
-            hoprBob.self.keyPair.publicKey,
+            hoprBob.self.onChainKeyPair.publicKey,
             hoprAlice.api.createType('Balance', 1234567),
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(hoprAlice.self.keyPair, { nonce: second })
+        .signAndSend(hoprAlice.self.onChainKeyPair, { nonce: second })
     ])
 
     await Utils.waitForNextBlock(hoprAlice.api)
@@ -106,9 +106,9 @@ describe('Hopr Polkadot', async function() {
     )
 
     assert.deepEqual(
-      hoprBob.self.keyPair.publicKey.subarray(4, 32),
+      hoprBob.self.onChainKeyPair.publicKey.subarray(4, 32),
       (
-        await hoprBob.api.query.hopr.states<State>(hoprBob.api.createType('AccountId', hoprBob.self.keyPair.publicKey))
+        await hoprBob.api.query.hopr.states<State>(hoprBob.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey))
       ).pubkey
         .toU8a()
         .subarray(0, 28),
@@ -117,14 +117,14 @@ describe('Hopr Polkadot', async function() {
 
     await hoprAlice.api.tx.balances
       .transfer(
-        hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey),
+        hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey),
         hoprAlice.api.createType('Balance', 123).toU8a()
       )
-      .signAndSend(hoprAlice.self.keyPair, { nonce: await hoprAlice.nonce })
+      .signAndSend(hoprAlice.self.onChainKeyPair, { nonce: await hoprAlice.nonce })
 
     console.log(
       `Alice's new balance '${chalk.green(
-        (await hoprAlice.api.query.balances.freeBalance(hoprAlice.self.keyPair.publicKey)).toString()
+        (await hoprAlice.api.query.balances.freeBalance(hoprAlice.self.onChainKeyPair.publicKey)).toString()
       )}'`
     )
   })
@@ -154,7 +154,7 @@ describe('Hopr Polkadot', async function() {
     const channel = await hoprAlice.channel.create(
       hoprAlice,
       hoprBob.self.publicKey,
-      () => Promise.resolve(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)),
+      () => Promise.resolve(hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey)),
       channelEnum.asFunded,
       async () => {
         const result = await pipe(
@@ -183,8 +183,8 @@ describe('Hopr Polkadot', async function() {
     console.log(chalk.green('channel opened'))
 
     const channelId = await Utils.getId(
-      hoprAlice.api.createType('AccountId', hoprAlice.self.keyPair.publicKey),
-      hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)
+      hoprAlice.api.createType('AccountId', hoprAlice.self.onChainKeyPair.publicKey),
+      hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey)
     )
 
     await Utils.waitForNextBlock(hoprAlice.api)
@@ -193,10 +193,10 @@ describe('Hopr Polkadot', async function() {
 
     assert(ChannelEnum.createActive(balance).eq(onChainChannel), `Channel should be active on-chain.`)
 
-    assert(await hoprAlice.channel.isOpen(hoprAlice, hoprAlice.api.createType('Hash', hoprBob.self.keyPair.publicKey)))
+    assert(await hoprAlice.channel.isOpen(hoprAlice, hoprAlice.api.createType('Hash', hoprBob.self.onChainKeyPair.publicKey)))
 
     assert(
-      await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.keyPair.publicKey))
+      await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.onChainKeyPair.publicKey))
     )
 
     console.log(onChainChannel.toJSON())
@@ -223,7 +223,7 @@ describe('Hopr Polkadot', async function() {
     assert.rejects(
       () =>
         hoprAlice.db.get(
-          Buffer.from(hoprAlice.dbKeys.Channel(hoprAlice.api.createType('AccountId', hoprBob.self.keyPair.publicKey)))
+          Buffer.from(hoprAlice.dbKeys.Channel(hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey)))
         ),
       `Check that database entry gets deleted.`
     )
@@ -259,10 +259,10 @@ function resetChain(binaryPath: string) {
 async function checkOnChainValues(hoprPolkadot: HoprPolkadot) {
   if (
     !Utils.u8aEquals(
-      hoprPolkadot.self.keyPair.publicKey.subarray(4, 32),
+      hoprPolkadot.self.onChainKeyPair.publicKey.subarray(4, 32),
       (
         await hoprPolkadot.api.query.hopr.states<State>(
-          hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)
+          hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey)
         )
       ).pubkey
         .toU8a()

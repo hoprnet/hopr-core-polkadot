@@ -27,10 +27,10 @@ export type HoprPolkadotProps = {
 export type HoprKeyPair = {
   privateKey: Uint8Array
   publicKey: Uint8Array
-  keyPair: KeyringPair
+  onChainKeyPair: KeyringPair
 }
 
-class HoprPolkadotClass implements HoprCoreConnector {
+class HoprPolkadot implements HoprCoreConnector {
   private _started: boolean = false
   private _nonce?: number
 
@@ -50,7 +50,7 @@ class HoprPolkadotClass implements HoprCoreConnector {
 
     return new Promise<number>(async (resolve, reject) => {
       try {
-        this._nonce = (await this.api.query.system.accountNonce(this.self.keyPair.publicKey)).toNumber()
+        this._nonce = (await this.api.query.system.accountNonce(this.self.onChainKeyPair.publicKey)).toNumber()
       } catch (err) {
         return reject(err)
       }
@@ -87,8 +87,8 @@ class HoprPolkadotClass implements HoprCoreConnector {
 
     await Promise.all([
       this.api.tx.hopr
-        .init(this.api.createType('Hash', this.self.keyPair.publicKey), secret)
-        .signAndSend(this.self.keyPair, { nonce: nonce != null ? nonce : await this.nonce }),
+        .init(this.api.createType('Hash', this.self.onChainKeyPair.publicKey), secret)
+        .signAndSend(this.self.onChainKeyPair, { nonce: nonce != null ? nonce : await this.nonce }),
       dbPromise
     ])
   }
@@ -112,7 +112,7 @@ class HoprPolkadotClass implements HoprCoreConnector {
    * Returns the current account balance.
    */
   get accountBalance(): Promise<Balance> {
-    return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.keyPair.publicKey))
+    return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.onChainKeyPair.publicKey))
   }
 
   readonly utils = Utils as typeof IUtils
@@ -139,7 +139,7 @@ class HoprPolkadotClass implements HoprCoreConnector {
       id: number,
       provider: string
     }
-  ): Promise<HoprPolkadotClass> {
+  ): Promise<HoprPolkadot> {
     const apiPromise = ApiPromise.create({
       provider: new WsProvider(options != null && options.provider ? options.provider : DEFAULT_URI),
       types: SRMLTypes
@@ -152,7 +152,7 @@ class HoprPolkadotClass implements HoprCoreConnector {
       hoprKeyPair = {
         privateKey: seed,
         publicKey: secp256k1.publicKeyCreate(seed),
-        keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(seed, undefined, 'sr25519')
+        onChainKeyPair: new Keyring({ type: 'sr25519' }).addFromSeed(seed, undefined, 'sr25519')
       }
     } else if (options != null && options.id != null && isFinite(options.id)) {
       if (options.id > DEMO_ACCOUNTS.length) {
@@ -175,7 +175,7 @@ class HoprPolkadotClass implements HoprCoreConnector {
       hoprKeyPair = {
         privateKey,
         publicKey,
-        keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privateKey, undefined, 'sr25519')
+        onChainKeyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privateKey, undefined, 'sr25519')
       }
     } else {
       throw Error('Invalid input parameters.')
@@ -183,8 +183,8 @@ class HoprPolkadotClass implements HoprCoreConnector {
 
     const api = await apiPromise
 
-    const result = new HoprPolkadotClass(api, hoprKeyPair, db)
-    if (!(await checkOnChainValues(api, db, hoprKeyPair.keyPair))) {
+    const result = new HoprPolkadot(api, hoprKeyPair, db)
+    if (!(await checkOnChainValues(api, db, hoprKeyPair.onChainKeyPair))) {
       await result.initOnchainValues()
     }
 
@@ -221,4 +221,4 @@ async function checkOnChainValues(api: ApiPromise, db: LevelUp, keyPair: Keyring
   return offChain && onChain
 }
 
-export default HoprPolkadotClass
+export default HoprPolkadot

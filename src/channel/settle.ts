@@ -82,7 +82,7 @@ export class ChannelSettler {
     try {
       this.props.hoprPolkadot.api.tx.hopr
         .initiateSettlement(this.props.counterparty)
-        .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
+        .signAndSend(this.props.hoprPolkadot.self.onChainKeyPair, { nonce: await this.props.hoprPolkadot.nonce })
     } catch (err) {
       console.log(`Tried to settle channel ${u8aToHex(this.props.channelId)} but failed due to ${err.message}`)
     }
@@ -123,7 +123,7 @@ export class ChannelSettler {
   async withdraw(): Promise<void> {
     await this.props.hoprPolkadot.api.tx.hopr
       .withdraw(this.props.counterparty)
-      .signAndSend(this.props.hoprPolkadot.self.keyPair, { nonce: await this.props.hoprPolkadot.nonce })
+      .signAndSend(this.props.hoprPolkadot.self.onChainKeyPair, { nonce: await this.props.hoprPolkadot.nonce })
 
     console.log('withdrawn')
   }

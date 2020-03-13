@@ -62,7 +62,7 @@ describe('test ticket generation and verification', function() {
   function generateNode(): HoprPolkadot {
     const privKey = randomBytes(32)
     const pubKey = secp256k1.publicKeyCreate(privKey)
-    const keyPair = new Keyring({ type: 'sr25519' }).addFromSeed(privKey, undefined, 'sr25519')
+    const onChainKeyPair = new Keyring({ type: 'sr25519' }).addFromSeed(privKey, undefined, 'sr25519')
 
     const hoprPolkadot = ({
       utils: {
@@ -108,7 +108,7 @@ describe('test ticket generation and verification', function() {
       self: {
         publicKey: pubKey,
         privateKey: privKey,
-        keyPair
+        onChainKeyPair
       },
       dbKeys: DbKeys,
       channel: Channel
@@ -145,8 +145,8 @@ describe('test ticket generation and verification', function() {
     )
 
     const channelId = await hoprPolkadot.utils.getId(
-      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey),
-      hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
+      hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey),
+      hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.onChainKeyPair.publicKey)
     )
 
     const signedChannel = await SignedChannel.create(counterpartysHoprPolkadot, channelEnum)
@@ -158,7 +158,7 @@ describe('test ticket generation and verification', function() {
       counterpartysHoprPolkadot.self.publicKey,
       () =>
         Promise.resolve(
-          counterpartysHoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
+          counterpartysHoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.onChainKeyPair.publicKey)
         ),
       signedChannel.channel.asFunded,
       async () => {
@@ -204,7 +204,7 @@ describe('test ticket generation and verification', function() {
     counterpartysHoprPolkadot.db.put(
       Buffer.from(
         hoprPolkadot.dbKeys.Channel(
-          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.keyPair.publicKey])
+          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.onChainKeyPair.publicKey])
         )
       ),
       Buffer.from(signedChannelCounterparty)
@@ -217,14 +217,14 @@ describe('test ticket generation and verification', function() {
     )) as Channel[]
 
     assert(
-      Utils.u8aEquals(dbChannels[0].counterparty.toU8a(), hoprPolkadot.self.keyPair.publicKey),
+      Utils.u8aEquals(dbChannels[0].counterparty.toU8a(), hoprPolkadot.self.onChainKeyPair.publicKey),
       `Channel record should make it into the database and its db-key should lead to the AccountId of the counterparty.`
     )
 
     const counterpartysChannel = await Channel.create(
       counterpartysHoprPolkadot,
       hoprPolkadot.self.publicKey,
-      () => Promise.resolve(hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)),
+      () => Promise.resolve(hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey)),
       signedChannel.channel.asFunded,
       () => Promise.resolve(signedChannelCounterparty)
     )
@@ -232,14 +232,14 @@ describe('test ticket generation and verification', function() {
     assert(
       await hoprPolkadot.channel.isOpen(
         hoprPolkadot,
-        hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.keyPair.publicKey)
+        hoprPolkadot.api.createType('AccountId', counterpartysHoprPolkadot.self.onChainKeyPair.publicKey)
       ),
       `Checks that party A considers the channel open.`
     )
     assert(
       await counterpartysHoprPolkadot.channel.isOpen(
         counterpartysHoprPolkadot,
-        counterpartysHoprPolkadot.api.createType('AccountId', hoprPolkadot.self.keyPair.publicKey)
+        counterpartysHoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey)
       ),
       `Checks that party B considers the channel open.`
     )

@@ -36,6 +36,21 @@ class Signature extends Uint8Array implements Types.Signature {
     }
   }
 
+  static create(
+    arr?: {
+      bytes: ArrayBuffer
+      offset: number
+    },
+    struct?: {
+      secp256k1Signature: Uint8Array
+      secp256k1Recovery: number
+      sr25519PublicKey: Uint8Array
+      sr25519Signature: Uint8Array
+    }
+  ): Signature {
+    return new Signature(arr, struct)
+  }
+
   get secp256k1Signature(): Uint8Array {
     return this.subarray(0, SECP256K1_SIGNATURE_LENGTH)
   }

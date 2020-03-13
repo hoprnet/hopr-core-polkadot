@@ -209,6 +209,8 @@ describe('Hopr Polkadot', async function() {
 
     console.log(chalk.green(`ticket`), ticket)
 
+    assert(Utils.u8aEquals(await ticket.signer, hoprAlice.self.publicKey), `Signer and Alice's publickey must be the same.`)
+
     await channel.initiateSettlement()
     await Utils.waitForNextBlock(hoprAlice.api)
 

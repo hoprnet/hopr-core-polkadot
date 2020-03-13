@@ -38,6 +38,19 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket<Ticket, Sign
     }
   }
 
+  static create(
+    arr?: {
+      bytes: Uint8Array
+      offset: number
+    },
+    struct?: {
+      signature: Signature
+      ticket: Ticket
+    }
+  ): SignedTicket {
+    return new SignedTicket(arr, struct)
+  }
+
   subarray(begin: number = 0, end: number = SignedTicket.SIZE): Uint8Array {
     return new Uint8Array(this.buffer, begin + this.byteOffset, end - begin)
   }

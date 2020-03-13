@@ -24,13 +24,24 @@ describe('check whether we can construct types', function() {
     const balance = new BN(12345)
     const balance_a = new BN(1234)
 
-    const channelBalance = new ChannelBalance(registry, {
+    const channelBalance = ChannelBalance.create(undefined, {
       balance,
       balance_a
     })
 
     assert(
       channelBalance.balance.eq(balance) && channelBalance.balance_a.eq(balance_a),
+      'Check that values are correctly set'
+    )
+
+    const channelBalanceU8a = channelBalance.toU8a()
+    const channelBalanceFromUint8Array = ChannelBalance.create({
+      bytes: channelBalanceU8a.buffer,
+      offset: channelBalanceU8a.byteOffset
+    })
+
+    assert(
+      channelBalanceFromUint8Array.balance.eq(balance) && channelBalanceFromUint8Array.balance_a.eq(balance_a),
       'Check that values are correctly set'
     )
 

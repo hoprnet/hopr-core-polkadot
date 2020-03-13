@@ -24,6 +24,28 @@ class ChannelBalance extends Struct.with({
   static get SIZE(): number {
     return Balance.SIZE + Balance.SIZE
   }
+
+  static create(
+    arr?: {
+      bytes: ArrayBuffer,
+      offset: number
+    },
+    struct?: {
+      balance: Balance | BN,
+      balance_a: Balance | BN
+    }
+  ): ChannelBalance {
+    const registry = new TypeRegistry()
+    registry.register(Balance)
+
+    if (arr != null && struct == null) {
+      return new ChannelBalance(registry, new Uint8Array(arr.bytes, arr.offset))
+    } else if (arr == null && struct != null) {
+      return new ChannelBalance(registry, struct)
+    } else {
+      throw Error(`Invalid input parameters.`)
+    }
+  }
 }
 
 class Uninitialized extends Null {

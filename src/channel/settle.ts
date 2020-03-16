@@ -24,7 +24,7 @@ export class ChannelSettler {
     return new Promise<Moment>(async (resolve, reject) => {
       let channel
       try {
-        channel = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.props.channelId)
+        channel = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId)
       } catch (err) {
         return reject(err)
       }
@@ -33,14 +33,15 @@ export class ChannelSettler {
         this._end = channel.asPendingSettlement[1]
       } else {
         try {
+          let unsubscribe: () => void
           await new Promise(async (resolve, reject) => {
-            const unsub = await this.props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
-              this.props.channelId,
+            unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
+              this.channelId,
               (channel: ChannelEnum) => {
                 console.log(`channel has changed.`, channel.toJSON())
                 if (channel.isPendingSettlement) {
                   setImmediate(() => {
-                    unsub()
+                    unsubscribe()
                     resolve()
                   })
                 }
@@ -56,10 +57,10 @@ export class ChannelSettler {
     })
   }
 
-  private handlers: (Function | undefined)[] = []
+  private handlers: (() => void)[] = []
   private unsubscribePushback: (() => void) | undefined
 
-  private constructor(private props: ChannelSettlerProps) {}
+  private constructor(public hoprPolkadot: HoprPolkadot, public counterparty: AccountId, public channelId: Hash, public settlementWindow: Moment) {}
 
   static async create(props: ChannelSettlerProps): Promise<ChannelSettler> {
     let channel = await props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(props.channelId)
@@ -68,23 +69,23 @@ export class ChannelSettler {
       throw Error(`Invalid state. Expected channel state to be either 'Active' or 'Pending'. Got '${channel.type}'.`)
     }
 
-    return new ChannelSettler(props)
+    return new ChannelSettler(props.hoprPolkadot, props.counterparty, props.channelId, props.settlementWindow)
   }
 
   async init(): Promise<ChannelSettler> {
-    this.unsubscribePushback = this.unsubscribePushback || this.props.hoprPolkadot.eventSubscriptions.on(
-      PushedBackSettlement(this.props.channelId),
+    this.unsubscribePushback = this.unsubscribePushback || this.hoprPolkadot.eventSubscriptions.on(
+      PushedBackSettlement(this.channelId),
       (event: Event) => {
         this._end = event.data[0] as Moment
       }
     )
 
     try {
-      this.props.hoprPolkadot.api.tx.hopr
-        .initiateSettlement(this.props.counterparty)
-        .signAndSend(this.props.hoprPolkadot.self.onChainKeyPair, { nonce: await this.props.hoprPolkadot.nonce })
+      this.hoprPolkadot.api.tx.hopr
+        .initiateSettlement(this.counterparty)
+        .signAndSend(this.hoprPolkadot.self.onChainKeyPair, { nonce: await this.hoprPolkadot.nonce })
     } catch (err) {
-      console.log(`Tried to settle channel ${u8aToHex(this.props.channelId)} but failed due to ${err.message}`)
+      console.log(`Tried to settle channel ${u8aToHex(this.channelId)} but failed due to ${err.message}`)
     }
     
     return this
@@ -112,18 +113,14 @@ export class ChannelSettler {
     }
 
     return new Promise<void>(resolve => {
-      let index = this.handlers.push(() => {
-        this.handlers.splice(index - 1, 1, undefined)
-        this.cleanHandlers()
-        return resolve()
-      })
+      this.handlers.push(resolve)
     })
   }
 
   async withdraw(): Promise<void> {
-    await this.props.hoprPolkadot.api.tx.hopr
-      .withdraw(this.props.counterparty)
-      .signAndSend(this.props.hoprPolkadot.self.onChainKeyPair, { nonce: await this.props.hoprPolkadot.nonce })
+    await this.hoprPolkadot.api.tx.hopr
+      .withdraw(this.counterparty)
+      .signAndSend(this.hoprPolkadot.self.onChainKeyPair, { nonce: await this.hoprPolkadot.nonce })
 
     console.log('withdrawn')
   }
@@ -131,33 +128,21 @@ export class ChannelSettler {
   private timeoutFactory(): Promise<() => void> {
     return new Promise<() => void>(async (resolve, reject) => {
       // make sure that we have `end` cached
-      await this.end
+      try {
+        await this.end
+      } catch (err) {
+        return reject(err)
+      }
 
       resolve(
-        this.props.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
+        this.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
           if (moment.gt(await this.end)) {
-            this.handlers.forEach(handler => handler != null && handler())
+            while(this.handlers.length > 0) {
+              (this.handlers.pop()!)()
+            }
           }
         })
       )
     })
-  }
-
-  private cleanHandlers() {
-    // Pops all finished out of the queue
-    while (this.handlers.length > 0 && this.handlers[this.handlers.length - 1] == null) {
-      this.handlers.pop()
-    }
-    
-    if (this.handlers.length == 0) {
-      if (this.unsubscribeChannelListener != null) {
-        this.unsubscribeChannelListener()
-      }
-
-      if (this.unsubscribePushback != null) {
-        this.unsubscribePushback()
-      }
-    }
-
   }
 }

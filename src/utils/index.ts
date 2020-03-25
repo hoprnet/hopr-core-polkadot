@@ -129,7 +129,7 @@ export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Ar
 
   const keyPair = new KeyRing({ type: 'sr25519' }).addFromSeed(privKey)
 
-  const signature = (secp256k1.ecdsaSign(keyPair.publicKey, privKey) as unknown) as {
+  const signature = (secp256k1.ecdsaSign(await hash(u8aConcat(keyPair.publicKey, msg)), privKey) as unknown) as {
     signature: Uint8Array
     recid: number
   }
@@ -153,23 +153,23 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
 
   if (
     !secp256k1
-      .ecdsaRecover(signature.secp256k1Signature, signature.secp256k1Recovery[0], signature.sr25519PublicKey)
+      .ecdsaRecover(signature.secp256k1Signature, signature.secp256k1Recovery[0], await hash(u8aConcat(signature.sr25519PublicKey, msg)))
       .every((value: number, index: number) => value == pubKey[index])
   ) {
-    console.log(
-      `is`,
-      (
-        await pubKeyToAccountId(
-          secp256k1.ecdsaRecover(
-            signature.secp256k1Signature,
-            signature.secp256k1Recovery[0],
-            signature.sr25519PublicKey
-          )
-        )
-      ).toU8a(),
-      `but should be`,
-      pubKey
-    )
+    // console.log(
+    //   `is`,
+    //   (
+    //     await pubKeyToAccountId(
+    //       secp256k1.ecdsaRecover(
+    //         signature.secp256k1Signature,
+    //         signature.secp256k1Recovery[0],
+    //         signature.sr25519PublicKey
+    //       )
+    //     )
+    //   ).toU8a(),
+    //   `but should be`,
+    //   pubKey
+    // )
     throw Error('invalid secp256k1 signature.')
   }
 

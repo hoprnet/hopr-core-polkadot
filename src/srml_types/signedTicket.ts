@@ -2,6 +2,7 @@ import secp256k1 from 'secp256k1'
 
 import { TypeRegistry } from '@polkadot/types'
 import { u8aConcat } from '@polkadot/util'
+import { hash } from '../utils'
 
 import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
@@ -82,18 +83,17 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket<Ticket, Sign
   }
 
   get signer(): Promise<Uint8Array> {
-    let signer: Uint8Array
-
-    try {
-      signer = secp256k1.ecdsaRecover(
-        this.signature.signature,
-        this.signature.recovery,
-        this.signature.sr25519PublicKey
-      )
-      return Promise.resolve(signer)
-    } catch (err) {
-      return Promise.reject(err)
-    }
+    return new Promise<Uint8Array>(async (resolve, reject) => {
+      try {
+        resolve(secp256k1.ecdsaRecover(
+          this.signature.signature,
+          this.signature.recovery,
+          await hash(u8aConcat(this.signature.sr25519PublicKey, this.ticket.hash))
+        ))
+      } catch (err) {
+        reject(err)
+      }
+    })
   }
 }
 

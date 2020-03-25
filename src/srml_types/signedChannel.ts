@@ -6,7 +6,7 @@ import { TypeRegistry } from '@polkadot/types'
 import { Signature } from './signature'
 import { Channel, Funded, Uninitialized, Active, PendingSettlement, ChannelBalance } from './channel'
 import { Balance, Moment } from './base'
-import { verify, sign, u8aEquals } from '../utils'
+import { verify, sign, u8aEquals, hash } from '../utils'
 
 import type { Types } from '@hoprnet/hopr-core-connector-interface'
 
@@ -75,24 +75,38 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
     return this._channel
   }
 
-  get signer() {
-    return secp256k1.ecdsaRecover(this.signature.signature, this.signature.recovery, this.signature.sr25519PublicKey)
+  get signer(): Promise<Uint8Array> {
+    return new Promise<Uint8Array>(async resolve =>
+      resolve(
+        secp256k1.ecdsaRecover(
+          this.signature.signature,
+          this.signature.recovery,
+          await hash(u8aConcat(this.signature.sr25519PublicKey, this.channel.toU8a()))
+        )
+      )
+    )
   }
 
-  static async create(coreConnector: HoprPolkadot, arr?: {
-    bytes: ArrayBuffer,
-    offset: number
-  }, struct?: {
-    channel: Channel,
-    signature?: Signature
-  }
+  static async create(
+    coreConnector: HoprPolkadot,
+    arr?: {
+      bytes: ArrayBuffer
+      offset: number
+    },
+    struct?: {
+      channel: Channel
+      signature?: Signature
+    }
   ): Promise<SignedChannel> {
     let signedChannel: SignedChannel
     if (arr != null && struct == null) {
       signedChannel = new SignedChannel(arr)
 
       if (u8aEquals(signedChannel.signature, new Uint8Array(Signature.SIZE).fill(0x00))) {
-        signedChannel.set(await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey), 0)
+        signedChannel.set(
+          await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey),
+          0
+        )
       }
     } else if (arr == null && struct != null) {
       const array = new Uint8Array(SignedChannel.SIZE).fill(0x00)
@@ -104,7 +118,10 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
       signedChannel.set(struct.channel.toU8a(), Signature.SIZE)
 
       if (struct.signature == null || u8aEquals(struct.signature, new Uint8Array(Signature.SIZE).fill(0x00))) {
-        signedChannel.signature.set(await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey), 0)
+        signedChannel.signature.set(
+          await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey),
+          0
+        )
       }
 
       if (struct.signature != null) {
@@ -114,8 +131,13 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
       signedChannel = new SignedChannel(arr)
 
       if (struct.channel != null) {
-        if (!u8aEquals(signedChannel.channel.toU8a(), new Uint8Array(signedChannel.channel.toU8a().length).fill(0x00)) && !signedChannel.channel.eq(struct.channel)) {
-          throw Error(`Argument mismatch. Please make sure the encoded channel in the array is the same as the one given throug struct.`)
+        if (
+          !u8aEquals(signedChannel.channel.toU8a(), new Uint8Array(signedChannel.channel.toU8a().length).fill(0x00)) &&
+          !signedChannel.channel.eq(struct.channel)
+        ) {
+          throw Error(
+            `Argument mismatch. Please make sure the encoded channel in the array is the same as the one given throug struct.`
+          )
         }
 
         signedChannel.set(struct.channel.toU8a(), Signature.SIZE)
@@ -124,7 +146,10 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
       if (struct.signature != null) {
         signedChannel.set(struct.signature, 0)
       } else {
-        signedChannel.signature.set(await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey), 0)
+        signedChannel.signature.set(
+          await sign(signedChannel.channel.toU8a(), coreConnector.self.privateKey, coreConnector.self.publicKey),
+          0
+        )
       }
     } else {
       throw Error(`Invalid input parameters.`)
@@ -132,16 +157,14 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
 
     return signedChannel
   }
-  
+
   async verify(coreConnector: HoprPolkadot) {
     return await verify(this.channel.toU8a(), this.signature, coreConnector.self.publicKey)
   }
 
-
   static get SIZE() {
     return Signature.SIZE + ChannelBalance.SIZE + 1
   }
-
 }
 
 export { SignedChannel }

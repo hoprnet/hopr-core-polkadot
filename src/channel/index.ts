@@ -25,7 +25,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     this._signedChannel = signedChannel
   }
 
-  get offChainCounterparty(): Uint8Array {
+  get offChainCounterparty(): Promise<Uint8Array> {
     return this._signedChannel.signer
   }
 

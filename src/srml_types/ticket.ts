@@ -84,7 +84,7 @@ class Ticket
       return false
     }
 
-    return verify(signedTicket.ticket.hash, signedTicket.signature as Signature, channel.offChainCounterparty)
+    return verify(signedTicket.ticket.hash, signedTicket.signature as Signature, await channel.offChainCounterparty)
   }
 
   static async submit(channel: ChannelInstance, signedTicket: Types.SignedTicket<Ticket, Signature>) {}

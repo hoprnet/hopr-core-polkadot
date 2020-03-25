@@ -197,7 +197,7 @@ describe('test ticket generation and verification', function() {
     const signedChannelCounterparty = await SignedChannel.create(hoprPolkadot, undefined, { channel: channelEnum })
 
     assert(
-      Utils.u8aEquals(signedChannelCounterparty.signer, hoprPolkadot.self.publicKey),
+      Utils.u8aEquals(await signedChannelCounterparty.signer, hoprPolkadot.self.publicKey),
       `Check that signer is recoverable.`
     )
 

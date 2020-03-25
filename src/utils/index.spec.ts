@@ -21,6 +21,6 @@ describe('test utils', function() {
     assert(await verify(message, signature, secp256k1PubKey), `check that signature is verifiable`)
 
     message[0] ^= 0xff
-    assert(!(await verify(message, signature, secp256k1PubKey)), `check that manipulated message is not verifiable`)
+    assert.rejects(async () => await verify(message, signature, secp256k1PubKey), `check that manipulated message is not verifiable`)
   })
 })

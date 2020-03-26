@@ -1,14 +1,14 @@
 # Exclude compiled typescript
-lib/
+lib
 
 # Exclude node.js stuff
-node_modules/
+**/node_modules
 
 # Exclude IDE stuff
-# .vscode/
+.vscode
 
 # Exclude yarn stuff
-.packages-cache/
+.packages-cache
 yarn-error.log
 
 # Exclude OSX stuff

@@ -2,7 +2,6 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "outDir": "./lib",
-    "noImplicitAny": true,
     "lib": ["es2020", "dom"],
     "module": "commonjs",
     "target": "es2019",

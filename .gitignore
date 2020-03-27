@@ -8,7 +8,6 @@ lib
 .vscode
 
 # Exclude yarn stuff
-.packages-cache
 yarn-error.log
 
 # Exclude OSX stuff

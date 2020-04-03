@@ -7,7 +7,7 @@
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
-    "postinstall": "yarn run tsc -d -p .",
+    "postinstall": "tsc -d -p .",
     "test": "npx mocha"
   },
   "files": [

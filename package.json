@@ -10,6 +10,7 @@
     "postinstall": "yarn run tsc -d -p .",
     "test": "npx mocha"
   },
+  "homepage": "https://hoprnet.io",
   "files": [
     "src/",
     "hopr.png",

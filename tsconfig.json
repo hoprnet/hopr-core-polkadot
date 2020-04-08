@@ -5,7 +5,6 @@
     "lib": ["es2020", "dom"],
     "module": "commonjs",
     "target": "es2019",
-    "strict": true,
-    "sourceMap": true
+    "strict": true
   }
 }

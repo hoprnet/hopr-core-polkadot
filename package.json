@@ -6,8 +6,12 @@
   "license": "LGPL-3.0-only",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "husky": {
+    "hooks": {
+      "pre-commit": "rm -rf ./lib && tsc -d -p . && git add ./lib"
+    }
+  },
   "scripts": {
-    "postinstall": "tsc -d -p .",
     "test": "npx mocha"
   },
   "homepage": "https://hoprnet.io",
@@ -38,6 +42,7 @@
     "@types/mocha": "^7.0.1",
     "@types/node": "^12.12.26",
     "@types/secp256k1": "^3.5.3",
+    "husky": "^4.2.3",
     "it-pipe": "^1.1.0",
     "levelup": "^4.3.2",
     "memdown": "^5.1.0",

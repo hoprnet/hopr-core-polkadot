@@ -3,7 +3,7 @@ import Keyring from '@polkadot/keyring'
 import type { KeyringPair } from '@polkadot/keyring/types'
 import type { LevelUp } from 'levelup'
 import { EventSignalling } from './events'
-import { Types, SRMLTypes, Balance, State, Public, Hash } from './srml_types'
+import { Types, SRMLTypes, Balance, State, Public, Hash, NativeBalance } from './srml_types'
 import { randomBytes } from 'crypto'
 import { waitReady } from '@polkadot/wasm-crypto'
 import * as Utils from './utils'
@@ -113,6 +113,13 @@ class HoprPolkadot implements HoprCoreConnector {
    */
   get accountBalance(): Promise<Balance> {
     return this.api.query.balances.freeBalance<Balance>(this.api.createType('AccountId', this.self.onChainKeyPair.publicKey))
+  }
+
+  /**
+   * Returns the current account balance.
+   */
+  get accountNativeBalance(): Promise<NativeBalance> {
+    return this.api.query.balances.freeBalance<NativeBalance>(this.api.createType('AccountId', this.self.onChainKeyPair.publicKey))
   }
 
   readonly utils = Utils as typeof IUtils

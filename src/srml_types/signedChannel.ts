@@ -44,7 +44,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
       PendingSettlement,
       ChannelBalance,
       Balance,
-      Moment
+      Moment,
     })
   }
 
@@ -56,7 +56,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
     if (this._signature == null) {
       this._signature = new Signature({
         bytes: this.buffer,
-        offset: this.byteOffset
+        offset: this.byteOffset,
       })
     }
 
@@ -76,7 +76,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
   }
 
   get signer(): Promise<Uint8Array> {
-    return new Promise<Uint8Array>(async resolve =>
+    return new Promise<Uint8Array>(async (resolve) =>
       resolve(
         secp256k1.ecdsaRecover(
           this.signature.signature,
@@ -112,7 +112,7 @@ class SignedChannel extends Uint8Array implements Types.SignedChannel<Channel, S
       const array = new Uint8Array(SignedChannel.SIZE).fill(0x00)
       signedChannel = new SignedChannel({
         bytes: array.buffer,
-        offset: array.byteOffset
+        offset: array.byteOffset,
       })
 
       signedChannel.set(struct.channel.toU8a(), Signature.SIZE)

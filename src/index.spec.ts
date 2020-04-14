@@ -27,7 +27,7 @@ type KeyPair = {
 
 const TWENTY_MINUTES = 20 * 60 * 60 * 1000
 
-describe('Hopr Polkadot', async function() {
+describe('Hopr Polkadot', async function () {
   const path: string = resolve(__dirname, polkadotBasepath)
   const target = 'debug'
   const binaryPath: string = resolve(path, `target/${target}`)
@@ -49,26 +49,26 @@ describe('Hopr Polkadot', async function() {
     await cryptoWaitReady()
   })
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     this.timeout(TWENTY_MINUTES)
 
     await resetChain(binaryPath)
 
     polkadotNode = spawn('cargo', ['run', '--', '--dev', '--no-mdns', '--no-telemetry'], {
       stdio: 'inherit',
-      cwd: path
+      cwd: path,
     })
 
     await Utils.wait(14 * 1000)
     ;[hoprAlice, hoprBob] = await Promise.all([
       HoprPolkadot.create(LevelUp(Memdown()), Utils.stringToU8a(DEMO_ACCOUNTS[0])),
-      HoprPolkadot.create(LevelUp(Memdown()), Utils.stringToU8a(DEMO_ACCOUNTS[1]))
+      HoprPolkadot.create(LevelUp(Memdown()), Utils.stringToU8a(DEMO_ACCOUNTS[1])),
     ])
 
     await Promise.all([
       /* prettier-ignore */
       hoprAlice.start(),
-      hoprBob.start()
+      hoprBob.start(),
     ])
 
     const [first, second] = [await hoprAlice.nonce, await hoprAlice.nonce]
@@ -92,7 +92,7 @@ describe('Hopr Polkadot', async function() {
             hoprAlice.api.createType('Balance', 0)
           )
         )
-        .signAndSend(hoprAlice.self.onChainKeyPair, { nonce: second })
+        .signAndSend(hoprAlice.self.onChainKeyPair, { nonce: second }),
     ])
 
     await Utils.waitForNextBlock(hoprAlice.api)
@@ -101,14 +101,16 @@ describe('Hopr Polkadot', async function() {
       Promise.all([
         /* prettier-ignore */
         checkOnChainValues(hoprAlice),
-        checkOnChainValues(hoprBob)
+        checkOnChainValues(hoprBob),
       ])
     )
 
     assert.deepEqual(
       hoprBob.self.onChainKeyPair.publicKey.subarray(4, 32),
       (
-        await hoprBob.api.query.hopr.states<State>(hoprBob.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey))
+        await hoprBob.api.query.hopr.states<State>(
+          hoprBob.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey)
+        )
       ).pubkey
         .toU8a()
         .subarray(0, 28),
@@ -135,12 +137,12 @@ describe('Hopr Polkadot', async function() {
     await hoprBob.stop()
   })
 
-  it('should connect', async function() {
+  it('should connect', async function () {
     this.timeout(TWENTY_MINUTES)
 
     const balance = {
       balance: new BN(12345),
-      balance_a: new BN(123)
+      balance_a: new BN(123),
     }
     const channelEnum = ChannelEnum.createFunded(balance)
 
@@ -175,7 +177,7 @@ describe('Hopr Polkadot', async function() {
 
         return new SignedChannel({
           bytes: result.buffer,
-          offset: result.byteOffset
+          offset: result.byteOffset,
         })
       }
     )
@@ -193,7 +195,9 @@ describe('Hopr Polkadot', async function() {
 
     assert(ChannelEnum.createActive(balance).eq(onChainChannel), `Channel should be active on-chain.`)
 
-    assert(await hoprAlice.channel.isOpen(hoprAlice, hoprAlice.api.createType('Hash', hoprBob.self.onChainKeyPair.publicKey)))
+    assert(
+      await hoprAlice.channel.isOpen(hoprAlice, hoprAlice.api.createType('Hash', hoprBob.self.onChainKeyPair.publicKey))
+    )
 
     assert(
       await hoprBob.channel.isOpen(hoprBob, hoprBob.api.createType('Hash', hoprAlice.self.onChainKeyPair.publicKey))
@@ -209,7 +213,10 @@ describe('Hopr Polkadot', async function() {
 
     console.log(chalk.green(`ticket`), ticket)
 
-    assert(Utils.u8aEquals(await ticket.signer, hoprAlice.self.publicKey), `Signer and Alice's publickey must be the same.`)
+    assert(
+      Utils.u8aEquals(await ticket.signer, hoprAlice.self.publicKey),
+      `Signer and Alice's publickey must be the same.`
+    )
 
     await channel.initiateSettlement()
     await Utils.waitForNextBlock(hoprAlice.api)
@@ -223,7 +230,9 @@ describe('Hopr Polkadot', async function() {
     assert.rejects(
       () =>
         hoprAlice.db.get(
-          Buffer.from(hoprAlice.dbKeys.Channel(hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey)))
+          Buffer.from(
+            hoprAlice.dbKeys.Channel(hoprAlice.api.createType('AccountId', hoprBob.self.onChainKeyPair.publicKey))
+          )
         ),
       `Check that database entry gets deleted.`
     )
@@ -234,10 +243,10 @@ function buildSubstrateModule(path: string, target: string = 'debug'): Promise<v
   return new Promise((resolve, reject) => {
     const cargoBuild = spawn('cargo', target == 'debug' ? ['build'] : ['build', `--${target}`], {
       cwd: path,
-      stdio: 'inherit'
+      stdio: 'inherit',
     })
 
-    cargoBuild.on('error', data => reject(data.toString()))
+    cargoBuild.on('error', (data) => reject(data.toString()))
 
     cargoBuild.on('close', () => resolve())
   })
@@ -247,10 +256,10 @@ function resetChain(binaryPath: string) {
   return new Promise((resolve, reject) => {
     const purgeChain = spawn(`${binaryPath}/hopr-polkadot`, ['purge-chain', '--dev', '-y'], {
       cwd: binaryPath,
-      stdio: 'inherit'
+      stdio: 'inherit',
     })
 
-    purgeChain.on('error', data => reject(data.toString()))
+    purgeChain.on('error', (data) => reject(data.toString()))
 
     purgeChain.on('close', () => resolve())
   })

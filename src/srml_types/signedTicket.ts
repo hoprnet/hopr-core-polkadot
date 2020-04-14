@@ -71,7 +71,7 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket<Ticket, Sign
     if (this._signature == null) {
       this._signature = new Signature({
         bytes: this.buffer,
-        offset: this.byteOffset
+        offset: this.byteOffset,
       })
     }
 
@@ -85,11 +85,13 @@ class SignedTicket extends Uint8Array implements Types.SignedTicket<Ticket, Sign
   get signer(): Promise<Uint8Array> {
     return new Promise<Uint8Array>(async (resolve, reject) => {
       try {
-        resolve(secp256k1.ecdsaRecover(
-          this.signature.signature,
-          this.signature.recovery,
-          await hash(u8aConcat(this.signature.sr25519PublicKey, this.ticket.hash))
-        ))
+        resolve(
+          secp256k1.ecdsaRecover(
+            this.signature.signature,
+            this.signature.recovery,
+            await hash(u8aConcat(this.signature.sr25519PublicKey, this.ticket.hash))
+          )
+        )
       } catch (err) {
         reject(err)
       }

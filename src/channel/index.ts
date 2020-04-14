@@ -55,11 +55,13 @@ class Channel implements ChannelInstance<HoprPolkadot> {
 
     return new Promise<ChannelEnum>(async (resolve, reject) => {
       try {
-        const record = await this.coreConnector.db.get(Buffer.from(this.coreConnector.dbKeys.Channel(this.counterparty)))
+        const record = await this.coreConnector.db.get(
+          Buffer.from(this.coreConnector.dbKeys.Channel(this.counterparty))
+        )
 
         this._signedChannel = new SignedChannel({
           bytes: record.buffer,
-          offset: record.byteOffset
+          offset: record.byteOffset,
         })
       } catch (err) {
         return reject(err)
@@ -90,7 +92,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
   }
 
   get balance_a(): Promise<Balance> {
-    return this.channel.then(channel => {
+    return this.channel.then((channel) => {
       switch (channel.type) {
         case 'Funded':
           return channel.asFunded.balance_a
@@ -105,7 +107,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
   }
 
   get balance(): Promise<Balance> {
-    return this.channel.then(channel => {
+    return this.channel.then((channel) => {
       switch (channel.type) {
         case 'Funded':
           return channel.asFunded.balance
@@ -129,7 +131,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
       return Promise.resolve<Balance>(this.balance_a)
     }
 
-    return new Promise<Balance>(async resolve => {
+    return new Promise<Balance>(async (resolve) => {
       return resolve(this.coreConnector.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
     })
   }
@@ -143,7 +145,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     ) {
       return Promise.resolve<Balance>(this.balance_a)
     }
-    return new Promise<Balance>(async resolve => {
+    return new Promise<Balance>(async (resolve) => {
       return resolve(this.coreConnector.api.createType('Balance', (await this.balance).sub(await this.balance_a)))
     })
   }
@@ -165,7 +167,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
         hoprPolkadot: this.coreConnector,
         counterparty: this.counterparty,
         channelId,
-        settlementWindow
+        settlementWindow,
       })
     } catch (err) {
       throw err
@@ -174,7 +176,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     await Promise.all([
       /* prettier-ignore */
       channelSettler.onceClosed().then(() => channelSettler.withdraw()),
-      channelSettler.init()
+      channelSettler.init(),
     ])
 
     await this.coreConnector.db.del(Buffer.from(this.coreConnector.dbKeys.Channel(this.counterparty)))
@@ -193,7 +195,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
           lt: this.coreConnector.dbKeys.Challenge(
             await this.channelId,
             this.coreConnector.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff))
-          )
+          ),
         })
         .on('error', reject)
         .on('data', ({ key, ownKeyHalf }) => {
@@ -238,7 +240,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
             throw err
           }
         }
-      )
+      ),
     ])
 
     if (onChain != offChain) {
@@ -280,7 +282,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
       const record = await coreConnector.db.get(Buffer.from(coreConnector.dbKeys.Channel(counterparty)))
       signedChannel = new SignedChannel({
         bytes: record.buffer,
-        offset: record.byteOffset
+        offset: record.byteOffset,
       })
     } else if (sign != null && channelBalance != null) {
       const channelOpener = await ChannelOpener.create(coreConnector, counterparty, channelId)
@@ -300,12 +302,14 @@ class Channel implements ChannelInstance<HoprPolkadot> {
         )
       }
 
-      signedChannel = await sign(channelBalance) as SignedChannel
+      signedChannel = (await sign(channelBalance)) as SignedChannel
 
       await Promise.all([
         /* prettier-ignore */
         channelOpener.onceOpen(),
-        channelOpener.onceFundedByCounterparty(signedChannel.channel).then(() => channelOpener.setActive(signedChannel))
+        channelOpener
+          .onceFundedByCounterparty(signedChannel.channel)
+          .then(() => channelOpener.setActive(signedChannel)),
       ])
 
       await coreConnector.db.put(Buffer.from(coreConnector.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
@@ -346,18 +350,16 @@ class Channel implements ChannelInstance<HoprPolkadot> {
           ),
           lt: Buffer.from(
             coreConnector.dbKeys.Channel(coreConnector.api.createType('Hash', new Uint8Array(Hash.SIZE).fill(0xff)))
-          )
+          ),
         })
-        .on('error', err => reject(err))
+        .on('error', (err) => reject(err))
         .on('data', ({ key, value }: { key: Buffer; value: Buffer }) => {
           const signedChannel: SignedChannel = new SignedChannel({
             bytes: value.buffer,
-            offset: value.byteOffset
+            offset: value.byteOffset,
           })
 
-          promises.push(
-            onData(new Channel(coreConnector, ChannelKeyParse(key, coreConnector.api), signedChannel))
-          )
+          promises.push(onData(new Channel(coreConnector, ChannelKeyParse(key, coreConnector.api), signedChannel)))
         })
         .on('end', () => resolve(onEnd(promises)))
     })
@@ -401,7 +403,7 @@ class Channel implements ChannelInstance<HoprPolkadot> {
     } catch (err) {
       if (err.notFound == null || err.notFound != true) {
         throw err
-      }      
+      }
     }
 
     if (found != null) {

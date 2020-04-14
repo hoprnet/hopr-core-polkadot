@@ -111,7 +111,7 @@ export function waitForNextBlock(api: ApiPromise): Promise<void> {
  * @param miliseconds how long to wait
  */
 export function wait(miliseconds: number): Promise<void> {
-  return new Promise<void>(resolve => setTimeout(resolve, miliseconds))
+  return new Promise<void>((resolve) => setTimeout(resolve, miliseconds))
 }
 
 /**
@@ -138,7 +138,7 @@ export async function sign(msg: Uint8Array, privKey: Uint8Array, pubKey: Uint8Ar
     secp256k1Signature: signature.signature,
     secp256k1Recovery: signature.recid,
     sr25519PublicKey: keyPair.publicKey,
-    sr25519Signature: keyPair.sign(msg)
+    sr25519Signature: keyPair.sign(msg),
   })
 }
 
@@ -153,7 +153,11 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
 
   if (
     !secp256k1
-      .ecdsaRecover(signature.secp256k1Signature, signature.secp256k1Recovery[0], await hash(u8aConcat(signature.sr25519PublicKey, msg)))
+      .ecdsaRecover(
+        signature.secp256k1Signature,
+        signature.secp256k1Recovery[0],
+        await hash(u8aConcat(signature.sr25519PublicKey, msg))
+      )
       .every((value: number, index: number) => value == pubKey[index])
   ) {
     // console.log(
@@ -185,7 +189,7 @@ export async function verify(msg: Uint8Array, signature: Signature, pubKey: Uint
  * @param list arrays to XOR
  */
 export function u8aXOR(inPlace: boolean = false, ...list: Uint8Array[]): Uint8Array {
-  if (!list.every(array => array.length == list[0].length)) {
+  if (!list.every((array) => array.length == list[0].length)) {
     throw Error(`Uint8Array must not have different sizes`)
   }
 

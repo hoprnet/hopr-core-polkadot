@@ -60,7 +60,12 @@ export class ChannelSettler {
   private handlers: (() => void)[] = []
   private unsubscribePushback: (() => void) | undefined
 
-  private constructor(public hoprPolkadot: HoprPolkadot, public counterparty: AccountId, public channelId: Hash, public settlementWindow: Moment) {}
+  private constructor(
+    public hoprPolkadot: HoprPolkadot,
+    public counterparty: AccountId,
+    public channelId: Hash,
+    public settlementWindow: Moment
+  ) {}
 
   static async create(props: ChannelSettlerProps): Promise<ChannelSettler> {
     let channel = await props.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(props.channelId)
@@ -73,12 +78,11 @@ export class ChannelSettler {
   }
 
   async init(): Promise<ChannelSettler> {
-    this.unsubscribePushback = this.unsubscribePushback || this.hoprPolkadot.eventSubscriptions.on(
-      PushedBackSettlement(this.channelId),
-      (event: Event) => {
+    this.unsubscribePushback =
+      this.unsubscribePushback ||
+      this.hoprPolkadot.eventSubscriptions.on(PushedBackSettlement(this.channelId), (event: Event) => {
         this._end = event.data[0] as Moment
-      }
-    )
+      })
 
     try {
       this.hoprPolkadot.api.tx.hopr
@@ -87,7 +91,7 @@ export class ChannelSettler {
     } catch (err) {
       console.log(`Tried to settle channel ${u8aToHex(this.channelId)} but failed due to ${err.message}`)
     }
-    
+
     return this
   }
 
@@ -112,7 +116,7 @@ export class ChannelSettler {
       this.unsubscribeChannelListener = await this.timeoutFactory()
     }
 
-    return new Promise<void>(resolve => {
+    return new Promise<void>((resolve) => {
       this.handlers.push(resolve)
     })
   }
@@ -137,8 +141,8 @@ export class ChannelSettler {
       resolve(
         this.hoprPolkadot.api.query.timestamp.now<Moment>(async (moment: Moment) => {
           if (moment.gt(await this.end)) {
-            while(this.handlers.length > 0) {
-              (this.handlers.pop()!)()
+            while (this.handlers.length > 0) {
+              this.handlers.pop()!()
             }
           }
         })

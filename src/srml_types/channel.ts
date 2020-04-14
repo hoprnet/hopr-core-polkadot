@@ -10,13 +10,13 @@ import type { Types } from '@hoprnet/hopr-core-connector-interface'
 import type BN from 'bn.js'
 
 type ChannelBalanceConstructor = {
-  balance: number | BN,
+  balance: number | BN
   balance_a: number | BN
 }
 
 class ChannelBalance extends Struct.with({
   balance: Balance,
-  balance_a: Balance
+  balance_a: Balance,
 }) {
   declare balance: Balance
   declare balance_a: Balance
@@ -27,11 +27,11 @@ class ChannelBalance extends Struct.with({
 
   static create(
     arr?: {
-      bytes: ArrayBuffer,
+      bytes: ArrayBuffer
       offset: number
     },
     struct?: {
-      balance: Balance | BN,
+      balance: Balance | BN
       balance_a: Balance | BN
     }
   ): ChannelBalance {
@@ -84,7 +84,7 @@ class Channel
     Uninitialized,
     Funded,
     Active,
-    PendingSettlement
+    PendingSettlement,
   })
   implements Types.Channel {
   declare asUninitialized: Uninitialized

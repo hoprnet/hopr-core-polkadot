@@ -20,14 +20,15 @@ const SRMLTypes = {
   Funded,
   State,
   Ticket,
-  TicketEpoch
+  TicketEpoch,
 }
 
 const Types = {
+  NativeBalance: Balance,
   SignedChannel,
   SignedTicket,
   Signature,
-  ...SRMLTypes
+  ...SRMLTypes,
 }
 
 export {
@@ -38,6 +39,7 @@ export {
   Signature,
   AccountId,
   Balance,
+  Balance as NativeBalance,
   ChannelId,
   PreImage,
   Moment,
@@ -49,5 +51,5 @@ export {
   Funded,
   PendingSettlement,
   Ticket,
-  State
+  State,
 }

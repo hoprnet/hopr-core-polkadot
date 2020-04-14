@@ -6,7 +6,7 @@ import type {
   AccountId as IAccountId,
   Balance as IBalance,
   Hash as IHash,
-  Moment as IMoment
+  Moment as IMoment,
 } from '@polkadot/types/interfaces'
 
 class Balance extends u128 implements Types.Balance, IBalance {

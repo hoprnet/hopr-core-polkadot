@@ -23,8 +23,9 @@ class Ticket
     epoch: TicketEpoch,
     amount: Balance,
     winProb: Hash,
-    onChainSecret: Hash
-  }) implements Types.Ticket {
+    onChainSecret: Hash,
+  })
+  implements Types.Ticket {
   declare channelId: Hash
   declare challenge: Hash
   declare epoch: TicketEpoch
@@ -40,11 +41,7 @@ class Ticket
     return Hash.SIZE + Hash.SIZE + TicketEpoch.SIZE + Balance.SIZE + Hash.SIZE + Hash.SIZE
   }
 
-  static async create(
-    channel: ChannelInstance,
-    amount: Balance,
-    challenge: Hash
-  ): Promise<SignedTicket> {
+  static async create(channel: ChannelInstance, amount: Balance, challenge: Hash): Promise<SignedTicket> {
     const { secret } = await channel.coreConnector.api.query.hopr.states<State>(channel.counterparty)
 
     const winProb = channel.coreConnector.api.createType(
@@ -61,15 +58,19 @@ class Ticket
         challenge,
         onChainSecret: secret,
         amount,
-        winProb
-      }
+        winProb,
+      },
     ])
 
-    const signature = await sign(ticket.hash, channel.coreConnector.self.privateKey, channel.coreConnector.self.publicKey)
+    const signature = await sign(
+      ticket.hash,
+      channel.coreConnector.self.privateKey,
+      channel.coreConnector.self.publicKey
+    )
 
     return new SignedTicket(undefined, {
       signature,
-      ticket
+      ticket,
     })
   }
 

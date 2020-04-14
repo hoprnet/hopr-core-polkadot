@@ -2,7 +2,7 @@ import { ApiPromise } from '@polkadot/api';
 import type { KeyringPair } from '@polkadot/keyring/types';
 import type { LevelUp } from 'levelup';
 import { EventSignalling } from './events';
-import { Types, Balance } from './srml_types';
+import { Types, Balance, NativeBalance } from './srml_types';
 import * as Utils from './utils';
 import * as Constants from './constants';
 import HoprCoreConnector, { Utils as IUtils, Types as ITypes, Channel as IChannel, DbKeys as IDbKeys } from '@hoprnet/hopr-core-connector-interface';
@@ -47,6 +47,10 @@ declare class HoprPolkadot implements HoprCoreConnector {
      * Returns the current account balance.
      */
     get accountBalance(): Promise<Balance>;
+    /**
+     * Returns the current account balance.
+     */
+    get accountNativeBalance(): Promise<NativeBalance>;
     readonly utils: typeof IUtils;
     readonly types: typeof ITypes;
     readonly channel: typeof IChannel;

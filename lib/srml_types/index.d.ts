@@ -34,8 +34,9 @@ declare const Types: {
     State: typeof State;
     Ticket: typeof Ticket;
     TicketEpoch: typeof TicketEpoch;
+    NativeBalance: typeof Balance;
     SignedChannel: typeof SignedChannel;
     SignedTicket: typeof SignedTicket;
     Signature: typeof Signature;
 };
-export { SRMLTypes, Types, SignedChannel, SignedTicket, Signature, AccountId, Balance, ChannelId, PreImage, Moment, Hash, Public, ChannelBalance, Channel, Active, Funded, PendingSettlement, Ticket, State };
+export { SRMLTypes, Types, SignedChannel, SignedTicket, Signature, AccountId, Balance, Balance as NativeBalance, ChannelId, PreImage, Moment, Hash, Public, ChannelBalance, Channel, Active, Funded, PendingSettlement, Ticket, State, };

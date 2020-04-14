@@ -13,20 +13,20 @@ import { SignedChannel } from './signedChannel'
 
 const PRIVATE_KEY_LENGTH = 32
 
-describe('check whether we can construct types', function() {
+describe('check whether we can construct types', function () {
   const registry = new TypeRegistry()
 
   registry.register({
     Moment,
-    Balance
+    Balance,
   })
-  it('should create a channel instance', function() {
+  it('should create a channel instance', function () {
     const balance = new BN(12345)
     const balance_a = new BN(1234)
 
     const channelBalance = ChannelBalance.create(undefined, {
       balance,
-      balance_a
+      balance_a,
     })
 
     assert(
@@ -37,7 +37,7 @@ describe('check whether we can construct types', function() {
     const channelBalanceU8a = channelBalance.toU8a()
     const channelBalanceFromUint8Array = ChannelBalance.create({
       bytes: channelBalanceU8a.buffer,
-      offset: channelBalanceU8a.byteOffset
+      offset: channelBalanceU8a.byteOffset,
     })
 
     assert(
@@ -47,7 +47,7 @@ describe('check whether we can construct types', function() {
 
     const fundedChannel = Channel.createFunded({
       balance,
-      balance_a
+      balance_a,
     })
 
     assert(
@@ -65,7 +65,7 @@ describe('check whether we can construct types', function() {
 
     const activeChannel = Channel.createActive({
       balance,
-      balance_a
+      balance_a,
     })
 
     assert(
@@ -83,7 +83,7 @@ describe('check whether we can construct types', function() {
 
     const pendingChannel = Channel.createPending(new BN(1001), {
       balance,
-      balance_a
+      balance_a,
     })
 
     assert(
@@ -104,7 +104,7 @@ describe('check whether we can construct types', function() {
     )
   })
 
-  it('should generate a signedChannel', async function() {
+  it('should generate a signedChannel', async function () {
     await waitReady()
 
     const generateNode = (): HoprPolkadot => {
@@ -113,8 +113,8 @@ describe('check whether we can construct types', function() {
         self: {
           privateKey,
           publicKey: secp256k1.publicKeyCreate(privateKey),
-          keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privateKey, undefined, 'sr25519')
-        }
+          keyPair: new Keyring({ type: 'sr25519' }).addFromSeed(privateKey, undefined, 'sr25519'),
+        },
       } as unknown) as HoprPolkadot
     }
 
@@ -122,26 +122,34 @@ describe('check whether we can construct types', function() {
 
     const channel = Channel.createFunded({
       balance: new BN(12345),
-      balance_a: new BN(123)
+      balance_a: new BN(123),
     })
 
     const arr = new Uint8Array(SignedChannel.SIZE)
 
-    const signedChannel = await SignedChannel.create(Alice, {
-      bytes: arr.buffer,
-      offset: arr.byteOffset
-    }, { channel })
+    const signedChannel = await SignedChannel.create(
+      Alice,
+      {
+        bytes: arr.buffer,
+        offset: arr.byteOffset,
+      },
+      { channel }
+    )
 
     assert(await signedChannel.verify(Alice))
 
     const signedChannelNormal = await SignedChannel.create(Alice, undefined, { channel })
 
-    const signedChannelWithExisting = await SignedChannel.create(Alice, {
-      bytes: signedChannelNormal.buffer,
-      offset: signedChannelNormal.byteOffset
-    }, {
-      channel
-    })
+    const signedChannelWithExisting = await SignedChannel.create(
+      Alice,
+      {
+        bytes: signedChannelNormal.buffer,
+        offset: signedChannelNormal.byteOffset,
+      },
+      {
+        channel,
+      }
+    )
 
     assert(await signedChannelWithExisting.verify(Alice))
   })

@@ -82,7 +82,7 @@ export class EventSignalling {
       } else {
         handlerIndex = subscriptions.push({
           args: eventSubscription.args,
-          handlers: [handler]
+          handlers: [handler],
         })
       }
 
@@ -156,12 +156,12 @@ export function Opened(channelId?: Hash, balanceA?: Balance, balance?: Balance):
 
     return {
       selector: `hopr.Opened`,
-      args
+      args,
     }
   }
 
   return {
-    selector: `hopr.Opened`
+    selector: `hopr.Opened`,
   }
 }
 
@@ -179,12 +179,12 @@ export function InitiatedSettlement(channelId: Hash, balanceA?: Balance): HoprEv
 
     return {
       selector: `hopr.InitiatedSettlement`,
-      args
+      args,
     }
   }
 
   return {
-    selector: `hopr.InitiatedSettlement`
+    selector: `hopr.InitiatedSettlement`,
   }
 }
 
@@ -202,12 +202,12 @@ export function PushedBackSettlement(channelId: Hash, balanceA?: Balance) {
 
     return {
       selector: `hopr.PushedBackSettlement`,
-      args
+      args,
     }
   }
 
   return {
-    selector: `hopr.PushedBackSettlement`
+    selector: `hopr.PushedBackSettlement`,
   }
 }
 

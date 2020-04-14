@@ -12,7 +12,7 @@ import {
   SignedChannel,
   State,
   Ticket,
-  Funded
+  Funded,
 } from '../srml_types'
 import { TypeRegistry, createType } from '@polkadot/types'
 import HoprPolkadot from '..'
@@ -30,7 +30,7 @@ import { ChannelOpener } from './open'
 
 const TEN_SECONDS = 10 * 1000
 
-describe('test ticket generation and verification', function() {
+describe('test ticket generation and verification', function () {
   this.timeout(TEN_SECONDS)
   const registry = new TypeRegistry()
 
@@ -69,55 +69,55 @@ describe('test ticket generation and verification', function() {
         ...Utils,
         waitForNextBlock() {
           Promise.resolve()
-        }
+        },
       },
       db: new LevelUp(Memdown()),
       accountBalance: Promise.resolve(new Balance(registry, new BN(1234567))),
       eventSubscriptions: {
-        once: (_: any, handler: any) => setTimeout(handler)
+        once: (_: any, handler: any) => setTimeout(handler),
       },
       api: {
         tx: {
           hopr: {
-            create: function() {
+            create: function () {
               const signAndSend = () => Promise.resolve()
 
               return { signAndSend }
             },
-            setActive: function() {
+            setActive: function () {
               const signAndSend = () => Promise.resolve()
 
               return { signAndSend }
-            }
-          }
+            },
+          },
         },
         query: {
           hopr: {
             states: () =>
               Promise.resolve({
                 epoch: new BN(0),
-                secret: createTypeUnsafe(registry, 'Hash', [new Uint8Array(32)])
+                secret: createTypeUnsafe(registry, 'Hash', [new Uint8Array(32)]),
               } as State),
-            channels: onChainChannels
-          }
+            channels: onChainChannels,
+          },
         },
         registry,
-        createType: (type: any, ...params: any[]) => createType(registry, type, ...params)
+        createType: (type: any, ...params: any[]) => createType(registry, type, ...params),
       },
       nonce: Promise.resolve(0),
       self: {
         publicKey: pubKey,
         privateKey: privKey,
-        onChainKeyPair
+        onChainKeyPair,
       },
       dbKeys: DbKeys,
-      channel: Channel
+      channel: Channel,
     } as unknown) as HoprPolkadot
 
     return hoprPolkadot
   }
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     this.timeout(TEN_SECONDS)
 
     await waitReady()
@@ -130,7 +130,7 @@ describe('test ticket generation and verification', function() {
     counterpartysHoprPolkadot = generateNode()
   })
 
-  it('should create a valid ticket', async function() {
+  it('should create a valid ticket', async function () {
     this.timeout(TEN_SECONDS)
 
     const channelEnum = new ChannelEnum(
@@ -139,7 +139,7 @@ describe('test ticket generation and verification', function() {
         registry,
         new ChannelBalance(registry, {
           balance: new BN(123),
-          balance_a: new BN(122)
+          balance_a: new BN(122),
         })
       )
     )
@@ -180,7 +180,7 @@ describe('test ticket generation and verification', function() {
 
         return new SignedChannel({
           bytes: result.buffer,
-          offset: result.byteOffset
+          offset: result.byteOffset,
         })
       }
     )
@@ -204,7 +204,9 @@ describe('test ticket generation and verification', function() {
     counterpartysHoprPolkadot.db.put(
       Buffer.from(
         hoprPolkadot.dbKeys.Channel(
-          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [hoprPolkadot.self.onChainKeyPair.publicKey])
+          createTypeUnsafe<AccountId>(hoprPolkadot.api.registry, 'AccountId', [
+            hoprPolkadot.self.onChainKeyPair.publicKey,
+          ])
         )
       ),
       Buffer.from(signedChannelCounterparty)

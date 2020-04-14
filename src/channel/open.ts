@@ -12,19 +12,19 @@ class ChannelOpener {
     hoprPolkadot: HoprPolkadot
   ): (source: AsyncIterable<Uint8Array>) => AsyncIterator<Uint8Array> {
     return (source: AsyncIterable<Uint8Array>) => {
-      return (async function*() {
+      return (async function* () {
         for await (const msg of source) {
           const signedChannelArray = msg.slice()
           const signedChannel = new SignedChannel({
             bytes: signedChannelArray.buffer,
-            offset: signedChannelArray.byteOffset
+            offset: signedChannelArray.byteOffset,
           })
 
           const counterparty = hoprPolkadot.api.createType('AccountId', signedChannel.signature.sr25519PublicKey)
 
           const channelId = await getId(
             counterparty,
-            hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey),
+            hoprPolkadot.api.createType('AccountId', hoprPolkadot.self.onChainKeyPair.publicKey)
           )
 
           let channelOpener = await ChannelOpener.create(hoprPolkadot, counterparty, channelId)
@@ -64,10 +64,14 @@ class ChannelOpener {
           await hoprPolkadot.db.put(Buffer.from(hoprPolkadot.dbKeys.Channel(counterparty)), Buffer.from(signedChannel))
 
           yield (
-            await SignedChannel.create(hoprPolkadot, {
-              bytes: signedChannel.buffer,
-              offset: signedChannel.byteOffset
-            }, { channel: signedChannel.channel })
+            await SignedChannel.create(
+              hoprPolkadot,
+              {
+                bytes: signedChannel.buffer,
+                offset: signedChannel.byteOffset,
+              },
+              { channel: signedChannel.channel }
+            )
           ).subarray()
         }
       })()
@@ -93,7 +97,7 @@ class ChannelOpener {
   onceOpen(): Promise<ChannelOpener> {
     const eventIdentifier = Opened(this.channelId)
 
-    return new Promise<ChannelOpener>(resolve => {
+    return new Promise<ChannelOpener>((resolve) => {
       this.hoprPolkadot.eventSubscriptions.once(eventIdentifier, () => {
         resolve(this)
       })
@@ -104,7 +108,7 @@ class ChannelOpener {
     if (handler == null) {
       let unsubscribe: () => void
 
-      return new Promise<ChannelOpener>(async resolve => {
+      return new Promise<ChannelOpener>(async (resolve) => {
         unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(
           this.channelId,
           (currentChannel: ChannelEnum) => {
@@ -119,7 +123,7 @@ class ChannelOpener {
 
     // @TODO implement else
 
-    const unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, _ => {
+    const unsubscribe = await this.hoprPolkadot.api.query.hopr.channels<ChannelEnum>(this.channelId, (_) => {
       unsubscribe()
     })
   }
